@@ -267,7 +267,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CustomTypewriter
   textDisplay: {fileID: 1137004638}
-  typingSpeed: 0.04
+  continueButton: {fileID: 0}
+  normalTypingSpeed: 0.04
 --- !u!1 &444993896
 GameObject:
   m_ObjectHideFlags: 0
@@ -749,11 +750,11 @@ MonoBehaviour:
   dialogueRunner: {fileID: 843189520}
   typewriter: {fileID: 368614550}
   speakerText: {fileID: 1231130849}
-  skipLineAutoAdvanceDelay: 0.15
   backlogPanel: {fileID: 1626218584}
   backlogText: {fileID: 1909294408}
   backlogScrollRect: {fileID: 1626218586}
   maxHistoryLines: 50
+  toggleCooldown: 0.2
 --- !u!114 &843189520 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8309902628685535410, guid: 52571f68872914e24837210513edea1d, type: 3}
@@ -1489,11 +1490,11 @@ MonoBehaviour:
   fadeDownDuration: 0.1
   autoAdvance: 0
   autoAdvanceDelay: 1
-  typewriterStyle: 1
+  typewriterStyle: 3
   lettersPerSecond: 60
   wordsPerSecond: 10
   customTypewriter:
-    targetObject: {fileID: 0}
+    targetObject: {fileID: 368614550}
   eventHandlers: []
 --- !u!1 &1430120157
 GameObject:
@@ -1749,13 +1750,14 @@ GameObject:
   - component: {fileID: 1626218588}
   - component: {fileID: 1626218587}
   - component: {fileID: 1626218586}
+  - component: {fileID: 1626218589}
   m_Layer: 5
   m_Name: BacklogPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1626218585
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1846,6 +1848,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1626218584}
   m_CullTransparentMesh: 1
+--- !u!114 &1626218589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626218584}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c047c4ace5a5c447a61fc6ccfdbcdaf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BacklogStyler
+  title: "\u0418\u0441\u0442\u043E\u0440\u0438\u044F"
+  hint: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C: \u043F\u0440\u0430\u0432\u0430\u044F
+    \u043A\u043D\u043E\u043F\u043A\u0430 \u043C\u044B\u0448\u0438 \u0438\u043B\u0438
+    \u043A\u043E\u043B\u0435\u0441\u043E \u0432\u043D\u0438\u0437"
+  cardSize: {x: 1240, y: 820}
 --- !u!1 &1823724905
 GameObject:
   m_ObjectHideFlags: 0

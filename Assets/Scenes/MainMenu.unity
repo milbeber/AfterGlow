@@ -893,6 +893,7 @@ GameObject:
   - component: {fileID: 753576515}
   - component: {fileID: 753576514}
   - component: {fileID: 753576513}
+  - component: {fileID: 753576518}
   m_Layer: 5
   m_Name: MainMenuCanvas
   m_TagString: Untagged
@@ -999,6 +1000,28 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &753576518
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 753576512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62c3d0a1e1ea67546be9ddd7e4766580, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MainMenuStyler
+  backgroundArt: {fileID: 2499961080502156605, guid: 76f8cd3e941465d4eaf2a8fd33f2897a, type: 3}
+  headingFont: {fileID: 0}
+  bodyFont: {fileID: 0}
+  title: AFTERGLOW
+  subtitle: "\u0410\u043A\u0430\u0434\u0435\u043C\u0438\u044F \xAB\u0410\u0441\u0442\u0440\u0430\xBB
+    // \u043A\u043B\u0443\u0431\u043D\u0430\u044F \u043A\u043E\u043C\u043D\u0430\u0442\u0430"
+  exitCaption: "\u041E\u0428\u0418\u0411\u041A\u0410 // \u041D\u0415 \u0423\u0425\u041E\u0414\u0418"
+  exitLabel: "\u0412\u042B\u0419\u0422\u0418"
+  cardPosition: {x: -430, y: -10}
+  cardSize: {x: 700, y: 760}
 --- !u!1 &995868636
 GameObject:
   m_ObjectHideFlags: 0

@@ -2986,6 +2986,7 @@ GameObject:
   - component: {fileID: 7149883281446648861}
   - component: {fileID: 2699818690295303734}
   - component: {fileID: 4716695068449283147}
+  - component: {fileID: 7820384863345396653}
   m_Layer: 5
   m_Name: AuthCanvas
   m_TagString: Untagged
@@ -3099,6 +3100,27 @@ MonoBehaviour:
   regEmailInput: {fileID: 2220510432758840061}
   regPasswordInput: {fileID: 7747514901259935623}
   regErrorText: {fileID: 1700349991092124117}
+--- !u!114 &7820384863345396653
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5706428576080578676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 935352818572acd468e328837b07b49e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AuthStyler
+  backgroundArt: {fileID: 2499961080502156605, guid: 76f8cd3e941465d4eaf2a8fd33f2897a, type: 3}
+  headingFont: {fileID: 0}
+  bodyFont: {fileID: 0}
+  loginTitle: "\u0410\u041A\u0410\u0414\u0415\u041C\u0418\u042F \xAB\u0410\u0421\u0422\u0420\u0410\xBB
+    // \u041A\u041B\u0423\u0411\u041D\u042B\u0419 \u041A\u0410\u0411\u0418\u041D\u0415\u0422"
+  registerTitle: "\u0410\u041A\u0410\u0414\u0415\u041C\u0418\u042F \xAB\u0410\u0421\u0422\u0420\u0410\xBB
+    // \u0417\u0410\u0427\u0418\u0421\u041B\u0415\u041D\u0418\u0415"
+  creepyWhisper: "\u041D\u0435 \u0443\u0445\u043E\u0434\u0438. \u041E\u0441\u0442\u0430\u043D\u044C\u0441\u044F
+    \u0441\u043E \u043C\u043D\u043E\u0439."
 --- !u!1 &5733781031449019991
 GameObject:
   m_ObjectHideFlags: 0

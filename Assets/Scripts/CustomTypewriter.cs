@@ -1,153 +1,118 @@
-using System;
-using System.Collections;
+п»їusing System;
+using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 using TMPro;
+using Yarn.Markup;
+using Yarn.Unity;
 
-public class CustomTypewriter : MonoBehaviour
+/// РљР°СЃС‚РѕРјРЅР°СЏ РїРµС‡Р°С‚РЅР°СЏ РјР°С€РёРЅРєР°, РїРѕРґРєР»СЋС‡С‘РЅРЅР°СЏ Рє Yarn Spinner РєР°Рє Custom Typewriter.
+/// РўРµРїРµСЂСЊ С‚РµРєСЃС‚ РїРµС‡Р°С‚Р°РµС‚ РўРћР›Р¬РљРћ РѕРЅР° (СЂР°РЅСЊС€Рµ РїР°СЂР°Р»Р»РµР»СЊРЅРѕ СЂР°Р±РѕС‚Р°Р»Р° РІСЃС‚СЂРѕРµРЅРЅР°СЏ
+/// РјР°С€РёРЅРєР° Yarn вЂ” РѕРЅРё РґСЂР°Р»РёСЃСЊ Р·Р° maxVisibleCharacters, РѕС‚СЃСЋРґР° РјРµСЂС†Р°РЅРёРµ).
+/// Р’ Line Presenter: Typewriter Style = Custom, Custom Typewriter = СЌС‚РѕС‚ РєРѕРјРїРѕРЅРµРЅС‚.
+public class CustomTypewriter : MonoBehaviour, IAsyncTypewriter
 {
-    public enum SkipMode
-    {
-        Accelerate, // Сверхбыстрая печать
-        Instant     // Моментальное появление
-    }
-
-    [Header("UI Ссылки")]
+    [Header("UI РЎСЃС‹Р»РєРё")]
     [SerializeField] private TextMeshProUGUI textDisplay;
     [SerializeField] private Button continueButton;
 
-    [Header("Скорость печати")]
-    [Tooltip("Задержка между символами при обычной печати (сек)")]
+    [Header("РЎРєРѕСЂРѕСЃС‚СЊ РїРµС‡Р°С‚Рё")]
+    [Tooltip("Р—Р°РґРµСЂР¶РєР° РјРµР¶РґСѓ СЃРёРјРІРѕР»Р°РјРё (СЃРµРє)")]
     [FormerlySerializedAs("typingSpeed")]
     [SerializeField] private float normalTypingSpeed = 0.035f;
-    [Tooltip("Задержка между символами при ускорении (сек)")]
-    [SerializeField] private float acceleratedTypingSpeed = 0.002f;
-    [SerializeField] private SkipMode skipMode = SkipMode.Instant;
 
+    /// Р’С‹Р·С‹РІР°РµС‚СЃСЏ, РєРѕРіРґР° РЅР°С‡РёРЅР°РµС‚СЃСЏ РЅРѕРІР°СЏ СЂРµРїР»РёРєР° (РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ Р±СЌРєР»РѕРіРѕРј)
     public event Action<string> LineStarted;
     public event Action LineFinished;
 
-    private string lastProcessedText = "";
-    private string currentFullText = "";
-    private bool isTyping;
-    private bool isSkipHeld;
-    private Coroutine typingCoroutine;
+    public bool IsTyping { get; private set; }
 
-    public bool IsTyping => isTyping;
-    public SkipMode CurrentSkipMode => skipMode;
+    // --- IAsyncTypewriter ---
+    public List<IActionMarkupHandler> ActionMarkupHandlers { get; } = new List<IActionMarkupHandler>();
+
+    public TMP_Text TextElement
+    {
+        get => textDisplay;
+        set { if (value is TextMeshProUGUI ugui) textDisplay = ugui; }
+    }
 
     private void Awake()
     {
-        if (textDisplay == null)
-            textDisplay = GetComponent<TextMeshProUGUI>();
-
-        if (continueButton == null)
-            continueButton = GetComponent<Button>();
+        if (textDisplay == null) textDisplay = GetComponentInChildren<TextMeshProUGUI>();
+        if (continueButton == null) continueButton = GetComponent<Button>();
     }
 
-    private void Update()
+    // Yarn РІС‹Р·С‹РІР°РµС‚ СЌС‚Рѕ РїРµСЂРµРґ РїРѕРєР°Р·РѕРј СЂРµРїР»РёРєРё
+    public void PrepareForContent(MarkupParseResult line)
     {
         if (textDisplay == null) return;
 
-        // Отслеживаем поступление нового текста от системы диалогов
-        if (!isTyping && !string.IsNullOrEmpty(textDisplay.text) && textDisplay.text != lastProcessedText)
-        {
-            StartTypingLine(textDisplay.text);
-        }
-    }
-
-    public void SetSkipHeld(bool held)
-    {
-        isSkipHeld = held;
-
-        // Если режим моментальный и Skip зажат во время печати — мгновенно завершаем
-        if (isSkipHeld && isTyping && skipMode == SkipMode.Instant)
-        {
-            CompleteLineInstantly();
-        }
-    }
-
-    public void StartTypingLine(string fullText)
-    {
-        currentFullText = fullText;
-        lastProcessedText = currentFullText;
-
-        if (typingCoroutine != null)
-            StopCoroutine(typingCoroutine);
-
-        typingCoroutine = StartCoroutine(TypeTextRoutine());
-    }
-
-    public void CompleteLineInstantly()
-    {
-        if (!isTyping) return;
-
-        if (typingCoroutine != null)
-            StopCoroutine(typingCoroutine);
-
-        textDisplay.maxVisibleCharacters = textDisplay.textInfo.characterCount;
-        FinishTyping();
-    }
-
-    private IEnumerator TypeTextRoutine()
-    {
-        isTyping = true;
-        if (continueButton != null)
-            continueButton.interactable = false;
-
-        LineStarted?.Invoke(currentFullText);
-
-        // Устанавливаем полный текст и обновляем геометрию TMP, чтобы узнать реальное число символов (без тегов)
-        textDisplay.text = currentFullText;
         textDisplay.maxVisibleCharacters = 0;
-        textDisplay.ForceMeshUpdate();
+        textDisplay.text = line.Text;
 
-        int totalVisibleCharacters = textDisplay.textInfo.characterCount;
+        foreach (var handler in ActionMarkupHandlers)
+            handler.OnPrepareForLine(line, textDisplay);
+    }
 
-        if (isSkipHeld && skipMode == SkipMode.Instant)
+    // Yarn РІС‹Р·С‹РІР°РµС‚ СЌС‚Рѕ РґР»СЏ РїРµС‡Р°С‚Рё. cancellationToken = "HurryUp" (СЃРєРёРї):
+    // РєР°Рє С‚РѕР»СЊРєРѕ РѕРЅ РѕС‚РјРµРЅС‘РЅ вЂ” РјРіРЅРѕРІРµРЅРЅРѕ РїРѕРєР°Р·С‹РІР°РµРј СЃС‚СЂРѕРєСѓ С†РµР»РёРєРѕРј.
+    public async YarnTask RunTypewriter(MarkupParseResult line, CancellationToken cancellationToken)
+    {
+        if (textDisplay == null) return;
+
+        IsTyping = true;
+        if (continueButton != null) continueButton.interactable = false;
+
+        textDisplay.maxVisibleCharacters = 0;
+        textDisplay.text = line.Text;
+        LineStarted?.Invoke(line.Text);
+
+        foreach (var handler in ActionMarkupHandlers)
+            handler.OnLineDisplayBegin(line, textDisplay);
+
+        // Р РµР°Р»СЊРЅРѕРµ С‡РёСЃР»Рѕ РІРёРґРёРјС‹С… СЃРёРјРІРѕР»РѕРІ (Р±РµР· rich-text С‚РµРіРѕРІ)
+        int total = textDisplay.GetTextInfo(line.Text).characterCount;
+        float delay = Mathf.Max(0f, normalTypingSpeed);
+        float budget = delay; // РїРµСЂРІС‹Р№ СЃРёРјРІРѕР» РїРѕСЏРІР»СЏРµС‚СЃСЏ СЃСЂР°Р·Сѓ
+
+        for (int i = 0; i < total; i++)
         {
-            textDisplay.maxVisibleCharacters = totalVisibleCharacters;
-            FinishTyping();
-            yield break;
-        }
-
-        int currentVisible = 0;
-        while (currentVisible < totalVisibleCharacters)
-        {
-            if (isSkipHeld)
+            while (!cancellationToken.IsCancellationRequested && budget < delay)
             {
-                if (skipMode == SkipMode.Instant)
-                {
-                    textDisplay.maxVisibleCharacters = totalVisibleCharacters;
-                    break;
-                }
-
-                // В режиме Accelerate печатаем пачками за кадр для максимальной скорости
-                int charsThisFrame = Mathf.Max(1, Mathf.CeilToInt(Time.unscaledDeltaTime / Mathf.Max(acceleratedTypingSpeed, 0.0001f)));
-                currentVisible = Mathf.Min(totalVisibleCharacters, currentVisible + charsThisFrame);
-                textDisplay.maxVisibleCharacters = currentVisible;
-                yield return null;
-                continue;
+                await YarnTask.Yield();
+                budget += Time.unscaledDeltaTime;
             }
 
-            currentVisible++;
-            textDisplay.maxVisibleCharacters = currentVisible;
+            if (cancellationToken.IsCancellationRequested) break; // СЃРєРёРї
 
-            yield return new WaitForSecondsRealtime(normalTypingSpeed);
+            foreach (var handler in ActionMarkupHandlers)
+                await handler.OnCharacterWillAppear(i, line, cancellationToken).SuppressCancellationThrow();
+
+            textDisplay.maxVisibleCharacters = i + 1; // Р°Р±СЃРѕР»СЋС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ, Р±РµР· "+="
+            budget -= delay;
         }
 
-        FinishTyping();
+        // РЎРєРёРї РёР»Рё РєРѕРЅРµС† вЂ” РїРѕРєР°Р·С‹РІР°РµРј РІСЃСЋ СЃС‚СЂРѕРєСѓ, Рё С‚РѕР»СЊРєРѕ РµС‘
+        textDisplay.maxVisibleCharacters = total;
+
+        foreach (var handler in ActionMarkupHandlers)
+            handler.OnLineDisplayComplete();
+
+        IsTyping = false;
+        if (continueButton != null) continueButton.interactable = true;
+        LineFinished?.Invoke();
     }
 
-    private void FinishTyping()
+    public void ContentWillDismiss()
     {
-        isTyping = false;
-        typingCoroutine = null;
+        foreach (var handler in ActionMarkupHandlers)
+            handler.OnLineWillDismiss();
+    }
 
-        if (continueButton != null)
-            continueButton.interactable = true;
-
-        LineFinished?.Invoke();
+    public void ContentDidDismiss()
+    {
+        if (textDisplay != null) textDisplay.maxVisibleCharacters = 0;
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,24 +8,27 @@ using Yarn.Unity;
 
 public class DialogueExtensions : MonoBehaviour
 {
-    [Header("Yarn Spinner � �������")]
+    [Header("Yarn Spinner и Машинка")]
     [SerializeField] private DialogueRunner dialogueRunner;
     [SerializeField] private CustomTypewriter typewriter;
     [SerializeField] private TMP_Text speakerText;
 
-    [Header("��������� �������� (Skip)")]
-    [Tooltip("����� ����� ��������� ��� ������� Skip (���)")]
-    [SerializeField] private float skipLineAutoAdvanceDelay = 0.15f;
-
-    [Header("������ (Backlog / �������)")]
+    [Header("Бэклог (Backlog / История)")]
     [SerializeField] private GameObject backlogPanel;
     [SerializeField] private TextMeshProUGUI backlogText;
     [SerializeField] private ScrollRect backlogScrollRect;
     [SerializeField] private int maxHistoryLines = 50;
+    [Tooltip("Цвет имени говорящего в истории")]
+    [SerializeField] private Color speakerColor = new Color32(0xB2, 0x3A, 0x5A, 0xFF);
+
+    /// Цвет имён в истории (BacklogStyler ставит светлый, под тёмное окно)
+    public Color SpeakerColor { get => speakerColor; set => speakerColor = value; }
+    [Tooltip("Защита от дребезга колеса: пауза после открытия/закрытия (сек)")]
+    [SerializeField] private float toggleCooldown = 0.2f;
 
     private readonly List<string> dialogueHistory = new List<string>();
-    private bool isSkipHeld;
-    private float nextLineTimer;
+    private Yarn.Unity.LineAdvancerInput.KeyCodes[] yarnKeys;
+    private float lastToggleTime = -10f;
 
     public bool IsBacklogOpen => backlogPanel != null && backlogPanel.activeSelf;
 
@@ -39,6 +42,11 @@ public class DialogueExtensions : MonoBehaviour
 
         if (dialogueRunner == null)
             dialogueRunner = FindFirstObjectByType<DialogueRunner>();
+
+        if (backlogScrollRect == null && backlogPanel != null)
+            backlogScrollRect = backlogPanel.GetComponentInChildren<ScrollRect>(true);
+
+        yarnKeys = FindObjectsByType<Yarn.Unity.LineAdvancerInput.KeyCodes>(FindObjectsSortMode.None);
     }
 
     private void OnEnable()
@@ -55,42 +63,47 @@ public class DialogueExtensions : MonoBehaviour
 
     private void Update()
     {
-        // �������� ��������� ��������� ������ � ������� (��� �������� ������� ���� �����������)
-        if (typewriter != null)
-            typewriter.SetSkipHeld(isSkipHeld && !IsBacklogOpen);
-
-        // ������ ����-�������� �������� ��� ��������� Skip
-        HandleSkipAdvancement();
+        // Правая кнопка мыши — альтернативный способ закрыть бэклог
+        if (IsBacklogOpen && Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            CloseBacklog();
     }
 
-    private void HandleSkipAdvancement()
+    #region Input System Callbacks (Send Messages)
+
+    // ВАЖНО: в режиме Send Messages PlayerInput НЕ присылает отпускание
+    // Button-действий. Поэтому "зажатие" через value.isPressed отследить нельзя —
+    // старый isSkipHeld навсегда оставался true, и диалог сам проматывался до развилки.
+    // Теперь Skip — одиночное нажатие: мгновенно допечатать текущую строку, и всё.
+    public void OnSkip(InputValue value)
     {
-        if (!isSkipHeld || IsBacklogOpen || dialogueRunner == null || !dialogueRunner.IsDialogueRunning)
-            return;
+        if (!value.isPressed || IsBacklogOpen) return;
+        if (dialogueRunner == null || !dialogueRunner.IsDialogueRunning) return;
 
-        // ���� ������� ��� �������� � ���� ���������� ������
-        if (typewriter != null && typewriter.IsTyping)
-        {
-            nextLineTimer = 0f;
-            return;
-        }
-
-        // ���� ������� ����������, �������� ������ � ����������� ���������
-        nextLineTimer += Time.unscaledDeltaTime;
-        if (nextLineTimer >= skipLineAutoAdvanceDelay)
-        {
-            nextLineTimer = 0f;
-            AdvanceDialogue();
-        }
+        dialogueRunner.RequestHurryUpLine();
     }
 
-    private void AdvanceDialogue()
+    public void OnScrollBacklog(InputValue value)
     {
-        if (dialogueRunner != null && dialogueRunner.IsDialogueRunning)
+        float y = value.Get<Vector2>().y;
+
+        // PassThrough присылает и нулевые значения — игнорируем
+        if (Mathf.Abs(y) < 0.05f || backlogPanel == null) return;
+        if (Time.unscaledTime - lastToggleTime < toggleCooldown) return;
+
+        if (y > 0f && !IsBacklogOpen)
         {
-            dialogueRunner.RequestNextLine();
+            OpenBacklog();
+        }
+        else if (y < 0f && IsBacklogOpen && IsScrolledToBottom())
+        {
+            // Колесо вниз закрывает окно, когда история долистана до конца
+            CloseBacklog();
         }
     }
+
+    #endregion
+
+    #region History
 
     public void AddLineToHistory(string speaker, string text)
     {
@@ -99,7 +112,7 @@ public class DialogueExtensions : MonoBehaviour
 
         string entry = string.IsNullOrEmpty(speaker)
             ? text.Trim()
-            : $"<b><color=#E0BB68>{speaker}:</color></b> {text.Trim()}";
+            : $"<b><color=#{ColorUtility.ToHtmlStringRGB(speakerColor)}>{speaker}:</color></b> {text.Trim()}";
 
         dialogueHistory.Add(entry);
 
@@ -110,31 +123,13 @@ public class DialogueExtensions : MonoBehaviour
             UpdateBacklogUI();
     }
 
-    #region Input System Callbacks (Send Messages)
-
-    public void OnSkip(InputValue value)
+    private void OnTypewriterLineStarted(string text)
     {
-        isSkipHeld = value.isPressed;
-        if (!isSkipHeld)
-            nextLineTimer = 0f;
-    }
-
-    public void OnScrollBacklog(InputValue value)
-    {
-        Vector2 scroll = value.Get<Vector2>();
-
-        if (scroll.y > 0.05f && !IsBacklogOpen)
-        {
-            OpenBacklog();
-        }
-    }
-
-    public void OnCancel(InputValue value)
-    {
-        if (value.isPressed && IsBacklogOpen)
-        {
-            CloseBacklog();
-        }
+        // Если у реплики нет говорящего, Yarn прячет поле имени, но старое имя в нём остаётся
+        string speaker = speakerText != null && speakerText.gameObject.activeInHierarchy
+            ? speakerText.text
+            : string.Empty;
+        AddLineToHistory(speaker, text);
     }
 
     #endregion
@@ -147,14 +142,41 @@ public class DialogueExtensions : MonoBehaviour
 
         UpdateBacklogUI();
         backlogPanel.SetActive(true);
+        SetYarnKeysEnabled(false); // Space/Esc не должны листать диалог под окном
+        lastToggleTime = Time.unscaledTime;
 
         StartCoroutine(ScrollToBottomRoutine());
     }
 
+    // Можно повесить на кнопку "Закрыть" в BacklogPanel
     public void CloseBacklog()
     {
-        if (backlogPanel != null)
-            backlogPanel.SetActive(false);
+        if (backlogPanel == null) return;
+
+        backlogPanel.SetActive(false);
+        SetYarnKeysEnabled(true);
+        lastToggleTime = Time.unscaledTime;
+    }
+
+    private bool IsScrolledToBottom()
+    {
+        if (backlogScrollRect == null || backlogScrollRect.content == null) return true;
+
+        RectTransform viewport = backlogScrollRect.viewport != null
+            ? backlogScrollRect.viewport
+            : (RectTransform)backlogScrollRect.transform;
+
+        // Весь текст помещается — листать нечего
+        if (backlogScrollRect.content.rect.height <= viewport.rect.height + 1f) return true;
+
+        return backlogScrollRect.verticalNormalizedPosition <= 0.01f;
+    }
+
+    private void SetYarnKeysEnabled(bool enabled)
+    {
+        if (yarnKeys == null) return;
+        foreach (var keys in yarnKeys)
+            if (keys != null) keys.enabled = enabled;
     }
 
     private void UpdateBacklogUI()
@@ -168,15 +190,11 @@ public class DialogueExtensions : MonoBehaviour
         yield return null;
         if (backlogScrollRect != null)
         {
+            Canvas.ForceUpdateCanvases();
             backlogScrollRect.verticalNormalizedPosition = 0f;
+            backlogScrollRect.velocity = Vector2.zero;
         }
     }
 
     #endregion
-
-    private void OnTypewriterLineStarted(string text)
-    {
-        string speaker = speakerText != null ? speakerText.text : string.Empty;
-        AddLineToHistory(speaker, text);
-    }
 }
