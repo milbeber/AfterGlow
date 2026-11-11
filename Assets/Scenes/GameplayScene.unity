@@ -731,7 +731,7 @@ MonoBehaviour:
   m_ActionEvents: []
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
-  m_DefaultActionMap: 
+  m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
 --- !u!114 &843189518
@@ -747,8 +747,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DialogueExtensions
   dialogueRunner: {fileID: 843189520}
+  typewriter: {fileID: 368614550}
+  speakerText: {fileID: 1231130849}
+  skipLineAutoAdvanceDelay: 0.15
   backlogPanel: {fileID: 1626218584}
   backlogText: {fileID: 1909294408}
+  backlogScrollRect: {fileID: 1626218586}
   maxHistoryLines: 50
 --- !u!114 &843189520 stripped
 MonoBehaviour:
@@ -1751,7 +1755,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1626218585
 RectTransform:
   m_ObjectHideFlags: 0

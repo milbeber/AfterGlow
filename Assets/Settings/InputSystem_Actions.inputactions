@@ -97,7 +97,7 @@
                     "priority": 0
                 },
                 {
-                    "name": "SkipText",
+                    "name": "Skip",
                     "type": "Button",
                     "id": "a016fa6e-3102-4b43-958a-726bc622fd90",
                     "expectedControlType": "",
@@ -107,7 +107,7 @@
                     "priority": 0
                 },
                 {
-                    "name": "ToggleBacklog",
+                    "name": "ScrollBacklog",
                     "type": "PassThrough",
                     "id": "59ba4b24-71e0-4cbb-a8f8-39d58cb23a0b",
                     "expectedControlType": "Vector2",
@@ -510,7 +510,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "SkipText",
+                    "action": "Skip",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -521,7 +521,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "ToggleBacklog",
+                    "action": "ScrollBacklog",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
