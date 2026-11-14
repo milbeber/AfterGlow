@@ -816,6 +816,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4bec29c0a230741bdac901dba8da47ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &843189521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 843189515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efded5f6440fe704a9812030b9ead927, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SanityVariableStorage
+  showDebug: 0
+  debugTextView: {fileID: 0}
 --- !u!1 &963226193
 GameObject:
   m_ObjectHideFlags: 0
@@ -1366,10 +1380,15 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 7545569452688597077, guid: 43398a9000d2a8d4fa067e74eef1d530, type: 3}
     - target: {fileID: 8309902628685535410, guid: 52571f68872914e24837210513edea1d, type: 3}
+      propertyPath: variableStorage
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8309902628685535410, guid: 52571f68872914e24837210513edea1d, type: 3}
       propertyPath: 'dialoguePresenters.Array.data[0]'
       value: 
       objectReference: {fileID: 1427223373}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 8635081094713202853, guid: 52571f68872914e24837210513edea1d, type: 3}
     m_RemovedGameObjects:
     - {fileID: 2958262986520364886, guid: 52571f68872914e24837210513edea1d, type: 3}
     - {fileID: 2958262985454349538, guid: 52571f68872914e24837210513edea1d, type: 3}
@@ -1393,6 +1412,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7262066351540048079, guid: 52571f68872914e24837210513edea1d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 843189517}
+    - targetCorrespondingSourceObject: {fileID: 7262066351540048079, guid: 52571f68872914e24837210513edea1d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 843189521}
     - targetCorrespondingSourceObject: {fileID: 3859336324316773512, guid: 52571f68872914e24837210513edea1d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1334277045}

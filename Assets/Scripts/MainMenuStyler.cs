@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// Главное меню в стиле «Академия Астра». Повесить на MainMenuCanvas.
@@ -24,10 +25,21 @@ public class MainMenuStyler : MonoBehaviour
     [SerializeField] private Vector2 cardPosition = new Vector2(-430f, -10f);
     [SerializeField] private Vector2 cardSize = new Vector2(700f, 760f);
 
+    [Header("Ярлычок «Вы вошли как»")]
+    [Tooltip("Прозрачность в покое (0 — не видно, 1 — как было)")]
+    [SerializeField, Range(0f, 1f)] private float profileAlpha = 0.6f;
+    [Tooltip("Прозрачность при наведении мыши")]
+    [SerializeField, Range(0f, 1f)] private float profileHoverAlpha = 0.9f;
+    [Tooltip("Насколько заметен прямоугольник под текстом")]
+    [SerializeField, Range(0f, 1f)] private float profilePlateAlpha = 0.35f;
+    [SerializeField] private float profileFontSize = 18f;
+
     private static readonly string[] CuteButtons = { "Button_NewGame", "Button_LoadGame", "Button_Settings" };
 
     private RectTransform profileTag;
     private TextMeshProUGUI welcome;
+    private CanvasGroup profileGroup;
+    private Canvas rootCanvas;
 
     private void Awake()
     {
@@ -273,17 +285,19 @@ public class MainMenuStyler : MonoBehaviour
         profileTag.anchorMin = profileTag.anchorMax = new Vector2(1f, 0.5f);
         profileTag.pivot = new Vector2(1f, 0.5f);
         profileTag.anchoredPosition = Vector2.zero;
-        profileTag.sizeDelta = new Vector2(400f, 76f);
-        var lace = UIStyleKit.AddImage(profileTag, UIStyleKit.LaceFrame(), UIStyleKit.Lace, Image.Type.Tiled);
-        lace.pixelsPerUnitMultiplier = 2.2f;
-        var paper = UIStyleKit.Child(profileTag, "Paper");
-        UIStyleKit.Stretch(paper, UIStyleKit.LaceInset / 2.2f);
-        UIStyleKit.AddImage(paper, UIStyleKit.Rounded(8), UIStyleKit.Paper, Image.Type.Sliced);
+        profileTag.sizeDelta = new Vector2(400f, 44f);
+        profileGroup = profileTag.gameObject.AddComponent<CanvasGroup>();
+        profileGroup.alpha = profileAlpha;
+        profileGroup.blocksRaycasts = false; // не мешает кликам
+        rootCanvas = profileTag.GetComponentInParent<Canvas>();
+        // без кружева: просто еле видный тёмный прямоугольник
+        var plate = UIStyleKit.AddImage(profileTag, UIStyleKit.Rounded(8), UIStyleKit.GloomPaper.WithAlpha(profilePlateAlpha), Image.Type.Sliced);
+        plate.raycastTarget = false;
 
         if (bodyFont != null) welcome.font = bodyFont;
         welcome.rectTransform.SetParent(profileTag, false);
         UIStyleKit.Stretch(welcome.rectTransform);
-        welcome.fontSize = 22;
+        welcome.fontSize = profileFontSize;
         welcome.alignment = TextAlignmentOptions.Center;
         welcome.textWrappingMode = TextWrappingModes.NoWrap;
         welcome.margin = Vector4.zero;
@@ -291,13 +305,13 @@ public class MainMenuStyler : MonoBehaviour
         StartCoroutine(FixWelcomeColor());
     }
 
-    // MainMenuUI красит текст в белый/красный — на розовой бумаге белый не виден
+    // MainMenuUI красит текст в белый/красный — приводим к палитре (светлый текст на тёмной плашке)
     private IEnumerator FixWelcomeColor()
     {
         yield return null;
         if (welcome == null) yield break;
         bool blocked = welcome.color.g < 0.5f && welcome.color.r > 0.5f;
-        welcome.color = blocked ? UIStyleKit.Blood : UIStyleKit.InkSoft;
+        welcome.color = blocked ? UIStyleKit.BloodBright : UIStyleKit.GloomText;
         if (blocked)
         {
             var g = welcome.gameObject.AddComponent<GlitchText>();
@@ -310,7 +324,21 @@ public class MainMenuStyler : MonoBehaviour
     {
         // ярлычок подстраивается под длину имени
         if (profileTag != null && welcome != null)
-            profileTag.sizeDelta = new Vector2(welcome.preferredWidth + 70f, profileTag.sizeDelta.y);
+            profileTag.sizeDelta = new Vector2(welcome.preferredWidth + 40f, profileTag.sizeDelta.y);
+
+        // в покое ярлычок полупрозрачный, при наведении мыши плавно проявляется
+        if (profileGroup != null)
+        {
+            bool hover = false;
+            var mouse = Mouse.current;
+            if (mouse != null)
+            {
+                Camera cam = rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? rootCanvas.worldCamera : null;
+                hover = RectTransformUtility.RectangleContainsScreenPoint(profileTag, mouse.position.ReadValue(), cam);
+            }
+            float target = hover ? profileHoverAlpha : profileAlpha;
+            profileGroup.alpha = Mathf.MoveTowards(profileGroup.alpha, target, Time.unscaledDeltaTime * 3f);
+        }
     }
 
     // ---------------- Появление ----------------
