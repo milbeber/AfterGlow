@@ -17,6 +17,21 @@ public class BacklogStyler : MonoBehaviour
 
     [SerializeField] private Vector2 cardSize = new Vector2(1240f, 840f);
 
+    [Header("Рисованная рамка (Assets/Resources/AfterGlowUI/BacklogFrame.png)")]
+    [Tooltip("Окно «История» из арта с розами. Выключите — вернётся процедурное кружево")]
+    [SerializeField] private bool useArtFrame = true;
+    [SerializeField] private Sprite artFrame;
+
+    public const string ArtFramePath = "AfterGlowUI/BacklogFrame";
+
+    // Координаты внутри BacklogFrame.png (px от левого верхнего угла)
+    private static readonly Rect ArtViewport = new Rect(167f, 168f, 1073f, 577f);
+    private static readonly Rect ArtScrollbar = new Rect(1268f, 270f, 14f, 465f);
+    private static readonly Vector2 ArtClose = new Vector2(1297f, 103f);
+
+    // куда ставить область прокрутки и скроллбар (центр карточки = 0,0)
+    private Vector2 vpPos, vpSize, sbPos, sbSize;
+
     private void Awake()
     {
         var scroll = GetComponent<ScrollRect>();
@@ -37,56 +52,12 @@ public class BacklogStyler : MonoBehaviour
         UIStyleKit.Stretch(dimFlat);
         UIStyleKit.AddImage(dimFlat, null, UIStyleKit.Void.WithAlpha(0.45f));
 
-        // 2. Кружевная карточка
-        var card = UIStyleKit.Child(transform, "Card", 1);
-        UIStyleKit.Place(card, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, cardSize);
-        var paper = UIStyleKit.LacePanel(card, "Lace", 1f, UIStyleKit.GloomPaper.WithAlpha(0.96f),
-            UIStyleKit.GloomLace, UIStyleKit.GloomStitch.WithAlpha(0.55f));
-        var scan = UIStyleKit.Child(paper.rectTransform, "Scanlines");
-        UIStyleKit.Stretch(scan, 2f);
-        var sc = UIStyleKit.AddImage(scan, UIStyleKit.Scanlines(), Color.black.WithAlpha(0.18f), Image.Type.Tiled);
-        sc.pixelsPerUnitMultiplier = 0.6f;
-
-        float top = cardSize.y / 2f;
-
-        // 3. Заголовок, орнамент, подсказка
-        var head = UIStyleKit.MakeText(card, "Title", title, hFont, 40, UIStyleKit.GloomText, TextAlignmentOptions.Center);
-        UIStyleKit.Place(head.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, top - 92f), new Vector2(cardSize.x - 200f, 56f));
-        head.fontStyle = FontStyles.Bold;
-        head.characterSpacing = 3f;
-        UIStyleKit.FitWidth(head, cardSize.x - 260f, 40f, 20f);
-
-        UIStyleKit.Divider(card, new Vector2(0f, top - 136f), cardSize.x - 240f, UIStyleKit.GloomStitch, UIStyleKit.GloomPaper);
-
-        var hintText = UIStyleKit.MakeText(card, "Hint", hint, bFont, 20, UIStyleKit.GloomMuted, TextAlignmentOptions.Center);
-        UIStyleKit.Place(hintText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, -top + 72f), new Vector2(cardSize.x - 200f, 30f));
-        hintText.fontStyle = FontStyles.Italic;
-
-        // Крестик
-        var close = UIStyleKit.MakeText(card, "Close", "×", hFont, 54, UIStyleKit.GloomMuted, TextAlignmentOptions.Center);
-        UIStyleKit.Place(close.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(cardSize.x / 2f - 86f, top - 90f), new Vector2(60f, 60f));
-        close.raycastTarget = true;
-        var closeBtn = close.gameObject.AddComponent<Button>();
-        closeBtn.targetGraphic = close;
-        closeBtn.navigation = new Navigation { mode = Navigation.Mode.None };
-        var cb = closeBtn.colors;
-        cb.normalColor = Color.white;
-        cb.highlightedColor = UIStyleKit.GloomAccent;
-        cb.pressedColor = UIStyleKit.BloodBright;
-        cb.selectedColor = Color.white;
-        closeBtn.colors = cb;
-        closeBtn.onClick.AddListener(() =>
-        {
-            var ext = FindFirstObjectByType<DialogueExtensions>();
-            if (ext != null) ext.CloseBacklog(); else gameObject.SetActive(false);
-        });
+        if (useArtFrame && artFrame == null) artFrame = Resources.Load<Sprite>(ArtFramePath);
+        if (useArtFrame && artFrame != null) BuildArtCard(hFont, bFont);
+        else BuildLaceCard(hFont, bFont);
 
         // 4. Область прокрутки внутри карточки, текст мягко тает сверху и снизу
         var viewport = scroll.viewport;
-        float vpTop = 170f, vpBottom = 110f;
         if (viewport != null)
         {
             var mask = viewport.GetComponent<Mask>();
@@ -95,9 +66,7 @@ public class BacklogStyler : MonoBehaviour
             if (vpImg != null) vpImg.enabled = false;
             UIStyleKit.GetOrAdd<RectMask2D>(viewport.gameObject).softness = new Vector2Int(0, 36);
 
-            UIStyleKit.Place(viewport, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-20f, (vpBottom - vpTop) / 2f),
-                new Vector2(cardSize.x - 240f, cardSize.y - vpTop - vpBottom));
+            UIStyleKit.Place(viewport, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), vpPos, vpSize);
             viewport.SetAsLastSibling();
         }
 
@@ -160,14 +129,122 @@ public class BacklogStyler : MonoBehaviour
         scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
     }
 
+    // ---------------- Процедурная кружевная карточка (прежний вид) ----------------
+
+    private void BuildLaceCard(TMP_FontAsset hFont, TMP_FontAsset bFont)
+    {
+        // 2. Кружевная карточка
+        var card = UIStyleKit.Child(transform, "Card", 1);
+        UIStyleKit.Place(card, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, cardSize);
+        var paper = UIStyleKit.LacePanel(card, "Lace", 1f, UIStyleKit.GloomPaper.WithAlpha(0.96f),
+            UIStyleKit.GloomLace, UIStyleKit.GloomStitch.WithAlpha(0.55f));
+        var scan = UIStyleKit.Child(paper.rectTransform, "Scanlines");
+        UIStyleKit.Stretch(scan, 2f);
+        var sc = UIStyleKit.AddImage(scan, UIStyleKit.Scanlines(), Color.black.WithAlpha(0.18f), Image.Type.Tiled);
+        sc.pixelsPerUnitMultiplier = 0.6f;
+
+        float top = cardSize.y / 2f;
+
+        // 3. Заголовок, орнамент, подсказка
+        var head = UIStyleKit.MakeText(card, "Title", title, hFont, 40, UIStyleKit.GloomText, TextAlignmentOptions.Center);
+        UIStyleKit.Place(head.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, top - 92f), new Vector2(cardSize.x - 200f, 56f));
+        head.fontStyle = FontStyles.Bold;
+        head.characterSpacing = 3f;
+        UIStyleKit.FitWidth(head, cardSize.x - 260f, 40f, 20f);
+
+        UIStyleKit.Divider(card, new Vector2(0f, top - 136f), cardSize.x - 240f, UIStyleKit.GloomStitch, UIStyleKit.GloomPaper);
+
+        var hintText = UIStyleKit.MakeText(card, "Hint", hint, bFont, 20, UIStyleKit.GloomMuted, TextAlignmentOptions.Center);
+        UIStyleKit.Place(hintText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, -top + 72f), new Vector2(cardSize.x - 200f, 30f));
+        hintText.fontStyle = FontStyles.Italic;
+
+        // Крестик
+        var close = UIStyleKit.MakeText(card, "Close", "×", hFont, 54, UIStyleKit.GloomMuted, TextAlignmentOptions.Center);
+        UIStyleKit.Place(close.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(cardSize.x / 2f - 86f, top - 90f), new Vector2(60f, 60f));
+        close.raycastTarget = true;
+        var closeBtn = close.gameObject.AddComponent<Button>();
+        closeBtn.targetGraphic = close;
+        closeBtn.navigation = new Navigation { mode = Navigation.Mode.None };
+        var cb = closeBtn.colors;
+        cb.normalColor = Color.white;
+        cb.highlightedColor = UIStyleKit.GloomAccent;
+        cb.pressedColor = UIStyleKit.BloodBright;
+        cb.selectedColor = Color.white;
+        closeBtn.colors = cb;
+        closeBtn.onClick.AddListener(() =>
+        {
+            var ext = FindFirstObjectByType<DialogueExtensions>();
+            if (ext != null) ext.CloseBacklog(); else gameObject.SetActive(false);
+        });
+
+        const float vpTop = 170f, vpBottom = 110f;
+        vpPos = new Vector2(-20f, (vpBottom - vpTop) / 2f);
+        vpSize = new Vector2(cardSize.x - 240f, cardSize.y - vpTop - vpBottom);
+        sbPos = new Vector2(cardSize.x / 2f - 100f, vpPos.y);
+        sbSize = new Vector2(18f, vpSize.y - 20f);
+    }
+
+    // ---------------- Рисованная карточка: розы, банты, «История», крестик-ромб ----------------
+
+    private void BuildArtCard(TMP_FontAsset hFont, TMP_FontAsset bFont)
+    {
+        var size = artFrame.rect.size;
+        var card = UIStyleKit.Child(transform, "Card", 1);
+        UIStyleKit.Place(card, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size);
+
+        var shadow = UIStyleKit.Child(card, "Shadow");
+        UIStyleKit.Stretch(shadow, -60f);
+        UIStyleKit.AddImage(shadow, UIStyleKit.SoftCircle(), Color.black.WithAlpha(0.6f));
+
+        var frameRt = UIStyleKit.Child(card, "Frame");
+        UIStyleKit.Stretch(frameRt);
+        UIStyleKit.AddImage(frameRt, artFrame, Color.white);
+
+        // перевод «px от левого верхнего угла картинки» → координаты от центра карточки
+        Vector2 C(float x, float y) => new Vector2(x - size.x / 2f, size.y / 2f - y);
+
+        vpPos = C(ArtViewport.center.x, ArtViewport.center.y);
+        vpSize = ArtViewport.size;
+        sbPos = C(ArtScrollbar.center.x, ArtScrollbar.center.y);
+        sbSize = ArtScrollbar.size;
+
+        // подсказка — под рамкой
+        var hintText = UIStyleKit.MakeText(card, "Hint", hint, bFont, 20, UIStyleKit.GloomMuted, TextAlignmentOptions.Center);
+        UIStyleKit.Place(hintText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(0f, -6f), new Vector2(size.x - 200f, 30f));
+        hintText.fontStyle = FontStyles.Italic;
+
+        // крестик нарисован в ромбе; поверх — невидимая кнопка с розовым свечением при наведении
+        var close = UIStyleKit.Child(card, "Close");
+        UIStyleKit.Place(close, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), C(ArtClose.x, ArtClose.y), new Vector2(96f, 96f));
+        var glow = UIStyleKit.AddImage(close, UIStyleKit.SoftCircle(), UIStyleKit.Hex("FF4FA3").WithAlpha(0.6f));
+        glow.raycastTarget = true;
+        var closeBtn = close.gameObject.AddComponent<Button>();
+        closeBtn.targetGraphic = glow;
+        closeBtn.navigation = new Navigation { mode = Navigation.Mode.None };
+        var cb = closeBtn.colors;
+        cb.normalColor = new Color(1f, 1f, 1f, 0f);
+        cb.highlightedColor = Color.white;
+        cb.pressedColor = UIStyleKit.BloodBright;
+        cb.selectedColor = new Color(1f, 1f, 1f, 0f);
+        cb.fadeDuration = 0.12f;
+        closeBtn.colors = cb;
+        closeBtn.onClick.AddListener(CloseFromButton);
+    }
+
+    private void CloseFromButton()
+    {
+        var ext = FindFirstObjectByType<DialogueExtensions>();
+        if (ext != null) ext.CloseBacklog(); else gameObject.SetActive(false);
+    }
+
     /// Скроллбар: розовая «ленточка» с кружевной дорожкой и сердечком на ручке
     private void StyleScrollbar(Scrollbar bar, RectTransform viewport)
     {
         var rt = (RectTransform)bar.transform;
-        float height = viewport != null ? viewport.sizeDelta.y - 20f : cardSize.y - 300f;
-        float y = viewport != null ? viewport.anchoredPosition.y : 0f;
-        UIStyleKit.Place(rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(cardSize.x / 2f - 100f, y), new Vector2(18f, height));
+        UIStyleKit.Place(rt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), sbPos, sbSize);
         bar.direction = Scrollbar.Direction.BottomToTop;
         bar.navigation = new Navigation { mode = Navigation.Mode.None };
         rt.SetAsLastSibling();

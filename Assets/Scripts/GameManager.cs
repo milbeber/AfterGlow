@@ -1,4 +1,4 @@
-using System.Diagnostics;
+п»їusing System.Diagnostics;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -31,7 +31,7 @@ public class GameManager : MonoBehaviour
         GameState previousState = CurrentState;
         CurrentState = newState;
 
-        Debug.Log($"[GameManager] Состояние изменено с {previousState} на {CurrentState}");
+        Debug.Log($"[GameManager] РЎРѕСЃС‚РѕСЏРЅРёРµ РёР·РјРµРЅРµРЅРѕ СЃ {previousState} РЅР° {CurrentState}");
 
         switch (CurrentState)
         {

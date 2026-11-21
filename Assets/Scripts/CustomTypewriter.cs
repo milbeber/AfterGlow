@@ -72,10 +72,10 @@ public class CustomTypewriter : MonoBehaviour, IAsyncTypewriter
         foreach (var handler in ActionMarkupHandlers)
             handler.OnLineDisplayBegin(line, textDisplay);
 
-        // Реальное число видимых символов (без rich-text тегов)
+        
         int total = textDisplay.GetTextInfo(line.Text).characterCount;
         float delay = Mathf.Max(0f, normalTypingSpeed);
-        float budget = delay; // первый символ появляется сразу
+        float budget = delay; 
 
         for (int i = 0; i < total; i++)
         {
@@ -85,16 +85,15 @@ public class CustomTypewriter : MonoBehaviour, IAsyncTypewriter
                 budget += Time.unscaledDeltaTime;
             }
 
-            if (cancellationToken.IsCancellationRequested) break; // скип
+            if (cancellationToken.IsCancellationRequested) break; 
 
             foreach (var handler in ActionMarkupHandlers)
                 await handler.OnCharacterWillAppear(i, line, cancellationToken).SuppressCancellationThrow();
 
-            textDisplay.maxVisibleCharacters = i + 1; // абсолютное значение, без "+="
+            textDisplay.maxVisibleCharacters = i + 1; 
             budget -= delay;
         }
 
-        // Скип или конец — показываем всю строку, и только её
         textDisplay.maxVisibleCharacters = total;
 
         foreach (var handler in ActionMarkupHandlers)

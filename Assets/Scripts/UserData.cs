@@ -1,11 +1,11 @@
-using System;
+п»їusing System;
 
 [Serializable]
 public class UserData
 {
-    public string username;       // Логин игрока
-    public string email;          // Электронная почта игрока
-    public string passwordHash;   // Зашифрованный пароль
-    public int gamesPlayed;       // Сколько игр сыграно (для статистики)
-    public string lastLoginDate;  // Дата последнего входа
+    public string username;       // Р›РѕРіРёРЅ РёРіСЂРѕРєР°
+    public string email;          // Р­Р»РµРєС‚СЂРѕРЅРЅР°СЏ РїРѕС‡С‚Р° РёРіСЂРѕРєР°
+    public string passwordHash;   // Р—Р°С€РёС„СЂРѕРІР°РЅРЅС‹Р№ РїР°СЂРѕР»СЊ
+    public int gamesPlayed;       // РЎРєРѕР»СЊРєРѕ РёРіСЂ СЃС‹РіСЂР°РЅРѕ (РґР»СЏ СЃС‚Р°С‚РёСЃС‚РёРєРё)
+    public string lastLoginDate;  // Р”Р°С‚Р° РїРѕСЃР»РµРґРЅРµРіРѕ РІС…РѕРґР°
 }

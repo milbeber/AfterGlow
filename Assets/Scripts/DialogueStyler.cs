@@ -30,6 +30,13 @@ public class DialogueStyler : MonoBehaviour
     [SerializeField] private float bottomMargin = 26f;
     [SerializeField] private float boxHeight = 230f;
 
+    [Header("Рисованная рамка (Assets/Resources/AfterGlowUI/DialogueFrame.png)")]
+    [Tooltip("Окно из нарисованного арта с розами. Выключите — вернётся процедурное кружево")]
+    [SerializeField] private bool useArtFrame = true;
+    [SerializeField] private Sprite artFrame;
+    [SerializeField] private float artSideMargin = 4f;
+    [SerializeField] private float artBottomMargin = 6f;
+
     [Header("Варианты ответа")]
     [SerializeField] private float optionsWidth = 1100f;
     [SerializeField] private float optionsY = 70f;
@@ -67,13 +74,25 @@ public class DialogueStyler : MonoBehaviour
         panel.anchorMax = new Vector2(1f, 0f);
         panel.pivot = new Vector2(0.5f, 0f);
         panel.anchoredPosition = Vector2.zero;
-        panel.sizeDelta = new Vector2(0f, boxHeight + bottomMargin + 40f);
+        if (useArtFrame && artFrame == null) artFrame = Resources.Load<Sprite>(ArtFramePath);
+        bool art = useArtFrame && artFrame != null;
+        panel.sizeDelta = art
+            ? new Vector2(0f, artFrame.rect.height + artBottomMargin)
+            : new Vector2(0f, boxHeight + bottomMargin + 40f);
 
         var panelImg = GetComponent<Image>();
         if (panelImg != null) { panelImg.sprite = null; panelImg.color = new Color(0, 0, 0, 0); }
 
-        BuildBox(panel);
-        BuildNameTag(panel);
+        if (art)
+        {
+            BuildArtBox(panel);
+            BuildArtNameTag();
+        }
+        else
+        {
+            BuildBox(panel);
+            BuildNameTag(panel);
+        }
 
         options = FindFirstObjectByType<OptionsPresenter>(FindObjectsInactive.Include);
 
@@ -153,6 +172,103 @@ public class DialogueStyler : MonoBehaviour
         UIStyleKit.AddImage(halo, UIStyleKit.SoftCircle(), UIStyleKit.BloodBright.WithAlpha(0.35f));
     }
 
+    // ---------------- Рисованное окно (розы, банты, чётки) ----------------
+
+    public const string ArtFramePath = "AfterGlowUI/DialogueFrame";
+
+    // Координаты внутри DialogueFrame.png (px от краёв картинки)
+    private const float ArtTextLeft = 150f, ArtTextRight = 290f, ArtTextTop = 142f, ArtTextBottom = 74f;
+    private static readonly Vector2 ArtNameCenter = new Vector2(286f, 86f);   // от левого верхнего угла
+    public const string ArtHeartPath = "AfterGlowUI/NextHeart";
+    private static readonly Vector2 ArtHeartPos = new Vector2(-128f, 102.5f);  // центр сердечка от правого нижнего угла
+
+    private void BuildArtBox(RectTransform panel)
+    {
+        float h = artFrame.rect.height;
+        box = UIStyleKit.Child(panel, "Box", 0);
+        box.anchorMin = new Vector2(0f, 0f);
+        box.anchorMax = new Vector2(1f, 0f);
+        box.pivot = new Vector2(0.5f, 0f);
+        box.offsetMin = new Vector2(artSideMargin, artBottomMargin);
+        box.offsetMax = new Vector2(-artSideMargin, artBottomMargin + h);
+        boxGroup = box.gameObject.AddComponent<CanvasGroup>();
+        boxGroup.blocksRaycasts = false;
+
+        // мягкая тень, чтобы рамка «отрывалась» от фона
+        var shadow = UIStyleKit.Child(box, "Shadow", 0);
+        UIStyleKit.Stretch(shadow, -30f);
+        UIStyleKit.AddImage(shadow, UIStyleKit.SoftCircle(), Color.black.WithAlpha(0.55f));
+
+        var frameRt = UIStyleKit.Child(box, "Frame");
+        UIStyleKit.Stretch(frameRt);
+        var frame = UIStyleKit.AddImage(frameRt, artFrame, Color.white, Image.Type.Sliced);
+        frame.fillCenter = true;
+
+        if (dialogueText != null)
+        {
+            if (bodyFont != null) dialogueText.font = bodyFont;
+            var rt = dialogueText.rectTransform;
+            rt.SetParent(box, false);
+            rt.SetAsLastSibling();
+            UIStyleKit.Stretch(rt);
+            rt.offsetMin = new Vector2(ArtTextLeft, ArtTextBottom);
+            rt.offsetMax = new Vector2(-ArtTextRight, -ArtTextTop);
+            dialogueText.fontSize = 31;
+            dialogueText.color = UIStyleKit.GloomText;
+            dialogueText.alignment = TextAlignmentOptions.TopLeft;
+            dialogueText.textWrappingMode = TextWrappingModes.Normal;
+            dialogueText.overflowMode = TextOverflowModes.Overflow;
+            dialogueText.lineSpacing = 6f;
+            dialogueText.margin = Vector4.zero;
+            dialogueText.raycastTarget = false;
+            Glow(dialogueText, Color.black.WithAlpha(0.85f), 0.4f, -0.5f);
+        }
+
+        // нарисованное сердечко остаётся на рамке всегда; когда реплика допечатана —
+        // поверх него «оживает» его точная копия: бьётся и светится
+        var heartArt = Resources.Load<Sprite>(ArtHeartPath);
+        if (heartArt != null)
+        {
+            heart = UIStyleKit.Child(box, "NextHeart");
+            UIStyleKit.Place(heart, new Vector2(1f, 0f), new Vector2(0.5f, 0.5f), ArtHeartPos, heartArt.rect.size);
+            var halo = UIStyleKit.Child(heart, "Halo");
+            UIStyleKit.Place(halo, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-6f, 2f), new Vector2(90f, 90f));
+            UIStyleKit.AddImage(halo, UIStyleKit.SoftCircle(), UIStyleKit.Hex("FF4FA3").WithAlpha(0.4f));
+            var icon = UIStyleKit.Child(heart, "Icon");
+            UIStyleKit.Stretch(icon);
+            UIStyleKit.AddImage(icon, heartArt, Color.white);
+        }
+    }
+
+    /// Имя — прямо в нарисованной табличке со звёздочками
+    private void BuildArtNameTag()
+    {
+        if (nameText == null) return;
+
+        nameTag = UIStyleKit.Child(box, "NameTag");
+        UIStyleKit.Place(nameTag, new Vector2(0f, 1f), new Vector2(0.5f, 0.5f),
+            new Vector2(ArtNameCenter.x, -ArtNameCenter.y), new Vector2(ArtNameWidth, 52f));
+
+        if (headingFont != null) nameText.font = headingFont;
+        var rt = nameText.rectTransform;
+        rt.SetParent(nameTag, false);
+        UIStyleKit.Stretch(rt);
+        nameText.fontSize = 26;
+        nameText.fontStyle = FontStyles.Bold;
+        nameText.characterSpacing = 3f;
+        nameText.color = UIStyleKit.Hex("FFE3F1");
+        nameText.alignment = TextAlignmentOptions.Center;
+        nameText.textWrappingMode = TextWrappingModes.NoWrap;
+        nameText.margin = Vector4.zero;
+        nameText.raycastTarget = false;
+        Glow(nameText, UIStyleKit.Hex("FF2E8A").WithAlpha(0.55f), 0.6f, 0f);
+        artNameTag = true;
+    }
+
+    private const float ArtNameWidth = 190f; // между звёздочками таблички
+    private bool artNameTag;
+    private string lastName;
+
     // ---------------- Ярлычок с именем ----------------
 
     private void BuildNameTag(RectTransform panel)
@@ -216,7 +332,12 @@ public class DialogueStyler : MonoBehaviour
         {
             bool hasName = nameText.gameObject.activeSelf && !string.IsNullOrWhiteSpace(nameText.text);
             if (nameTag.gameObject.activeSelf != hasName) nameTag.gameObject.SetActive(hasName);
-            if (hasName) nameTag.sizeDelta = new Vector2(Mathf.Max(200f, nameText.preferredWidth + 90f), nameTag.sizeDelta.y);
+            if (hasName && !artNameTag) nameTag.sizeDelta = new Vector2(Mathf.Max(200f, nameText.preferredWidth + 90f), nameTag.sizeDelta.y);
+            else if (hasName && nameText.text != lastName)
+            {
+                lastName = nameText.text;
+                UIStyleKit.FitWidth(nameText, ArtNameWidth, 26f, 16f); // длинное имя ужимается под табличку
+            }
         }
 
         // сердце-пульс, когда реплика допечатана

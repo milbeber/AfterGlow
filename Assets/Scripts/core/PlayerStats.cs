@@ -1,40 +1,55 @@
-using System;
-using Debug = UnityEngine.Debug;
+п»їusing System;
 using UnityEngine;
+using UnityEngine.Events;
 
+/// Р Р°СЃСЃСѓРґРѕРє РіРµСЂРѕСЏ (0вЂ“100) вЂ” СЃРёРЅРіР»С‚РѕРЅ, Р¶РёРІС‘С‚ РјРµР¶РґСѓ СЃС†РµРЅР°РјРё.
+/// Р›СЋР±РѕРµ РёР·РјРµРЅРµРЅРёРµ РїСЂРѕС…РѕРґРёС‚ С‡РµСЂРµР· SetSanity: Р·РЅР°С‡РµРЅРёРµ Р¶С‘СЃС‚РєРѕ Р·Р°Р¶РёРјР°РµС‚СЃСЏ РІ [min; max],
+/// Р° РїСЂРё РїРµСЂРµСЃРµС‡РµРЅРёРё РїРѕСЂРѕРіРѕРІ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё СЂР°СЃСЃС‹Р»Р°СЋС‚СЃСЏ СЃРѕР±С‹С‚РёСЏ (C# Рё UnityEvent РІ РёРЅСЃРїРµРєС‚РѕСЂРµ).
+/// РР· Yarn СѓРїСЂР°РІР»СЏРµС‚СЃСЏ С‡РµСЂРµР· <<set $sanity to ...>>, <<change_sanity -10>>, <<set_sanity 50>> (СЃРј. SanityYarnBridge).
 public class PlayerStats : MonoBehaviour
 {
     public static PlayerStats Instance { get; private set; }
 
-    [Header("Настройки рассудка")]
-    [SerializeField] private float maxSanity = 100f;
+    public enum SanityState
+    {
+        Normal,   
+        Warning,  
+        Critical, 
+        Depleted 
+    }
+
+    [Header("РќР°СЃС‚СЂРѕР№РєРё СЂР°СЃСЃСѓРґРєР°")]
     [SerializeField] private float minSanity = 0f;
+    [SerializeField] private float maxSanity = 100f;
     [SerializeField] private float startSanity = 100f;
 
-    [Header("Критические пороги")]
+    [Header("РљСЂРёС‚РёС‡РµСЃРєРёРµ РїРѕСЂРѕРіРё")]
     [SerializeField] private float warningThreshold = 60f;
     [SerializeField] private float criticalThreshold = 30f;
+
+    [Header("РўСЂРёРіРіРµСЂС‹ (РјРѕР¶РЅРѕ РїРѕРґРїРёСЃР°С‚СЊ РѕР±СЉРµРєС‚С‹ РїСЂСЏРјРѕ РІ РёРЅСЃРїРµРєС‚РѕСЂРµ)")]
+    public UnityEvent<float> onSanityChanged = new UnityEvent<float>();
+    public UnityEvent onWarningReached = new UnityEvent();
+    public UnityEvent onCriticalReached = new UnityEvent();
+    public UnityEvent onDepleted = new UnityEvent();
+    public UnityEvent onRecovered = new UnityEvent();
+
+    // РЎРѕР±С‹С‚РёСЏ РґР»СЏ РєРѕРґР°: HUD, СЌС„С„РµРєС‚С‹ (РґРЅРё 14вЂ“15), GameManager
+    public event Action<float, float> OnSanityChanged;          // (РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ, РёР·РјРµРЅРµРЅРёРµ)
+    public event Action<SanityState> OnSanityStateChanged;
+    public event Action OnCriticalSanityReached;
+    public event Action OnSanityDepleted;
 
     private float currentSanity;
     private SanityState currentState = SanityState.Normal;
 
     public float CurrentSanity => currentSanity;
-    public float NormalizedSanity => currentSanity / maxSanity;
+    public float MinSanity => minSanity;
+    public float MaxSanity => maxSanity;
+    public float WarningThreshold => warningThreshold;
+    public float CriticalThreshold => criticalThreshold;
+    public float NormalizedSanity => Mathf.InverseLerp(minSanity, maxSanity, currentSanity);
     public SanityState CurrentState => currentState;
-
-    // События для систем эффектов (Дни 14-15), UI и GameManager
-    public event Action<float, float> OnSanityChanged; // (новое значение, изменение)
-    public event Action<SanityState> OnSanityStateChanged;
-    public event Action OnCriticalSanityReached;
-    public event Action OnSanityDepleted;
-
-    public enum SanityState
-    {
-        Normal,
-        Warning,
-        Critical,
-        Depleted
-    }
 
     private void Awake()
     {
@@ -44,66 +59,94 @@ public class PlayerStats : MonoBehaviour
             return;
         }
         Instance = this;
+
+        if (transform.parent != null) transform.SetParent(null, true);
         DontDestroyOnLoad(gameObject);
 
-        SetSanity(startSanity, silent: true);
+        currentSanity = Mathf.Clamp(startSanity, minSanity, maxSanity);
+        currentState = Evaluate(currentSanity);
     }
 
-    /// <summary>
-    /// Устанавливает рассудок с жесткой валидацией [0; 100].
-    /// </summary>
-    public void SetSanity(float value, bool silent = false)
+    private void OnDestroy()
     {
-        float clamped = Mathf.Clamp(value, minSanity, maxSanity);
-        float delta = clamped - currentSanity;
+        if (Instance == this) Instance = null;
+    }
 
-        // Если значение реально не изменилось (например, уже 0 и пытаемся уйти в минус)
-        if (Mathf.Approximately(clamped, currentSanity) && !silent)
-            return;
+    private void OnValidate()
+    {
+        // РїРѕСЂРѕРіРё РЅРµ РјРѕРіСѓС‚ РІС‹Р№С‚Рё Р·Р° С€РєР°Р»Сѓ Рё РїРµСЂРµРїСѓС‚Р°С‚СЊСЃСЏ РјРµСЃС‚Р°РјРё
+        maxSanity = Mathf.Max(maxSanity, minSanity + 1f);
+        startSanity = Mathf.Clamp(startSanity, minSanity, maxSanity);
+        criticalThreshold = Mathf.Clamp(criticalThreshold, minSanity, maxSanity);
+        warningThreshold = Mathf.Clamp(warningThreshold, criticalThreshold, maxSanity);
+    }
 
-        currentSanity = clamped;
-
-        if (!silent)
+  
+    public void SetSanity(float value)
+    {
+        if (float.IsNaN(value) || float.IsInfinity(value))
         {
-            Debug.Log($"[PlayerStats] Рассудок изменен: {currentSanity:F1} (delta: {delta:+0.0;-0.0;0})");
-            OnSanityChanged?.Invoke(currentSanity, delta);
+            Debug.LogWarning($"[PlayerStats] РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ СЂР°СЃСЃСѓРґРєР° ({value}) вЂ” РёРіРЅРѕСЂРёСЂСѓСЋ");
+            return;
         }
 
-        UpdateSanityState(silent);
+        float clamped = Mathf.Clamp(value, minSanity, maxSanity);
+        if (!Mathf.Approximately(clamped, value))
+            Debug.Log($"[PlayerStats] {value:0.#} РІРЅРµ РіСЂР°РЅРёС† [{minSanity:0}; {maxSanity:0}] в†’ {clamped:0.#}");
+
+        if (Mathf.Approximately(clamped, currentSanity)) return;
+
+        float delta = clamped - currentSanity;
+        currentSanity = clamped;
+
+        Debug.Log($"[PlayerStats] Р Р°СЃСЃСѓРґРѕРє: {currentSanity:0.#} ({delta:+0.#;-0.#})");
+        OnSanityChanged?.Invoke(currentSanity, delta);
+        onSanityChanged.Invoke(currentSanity);
+
+        UpdateState();
     }
 
-    /// <summary>
-    /// Изменяет рассудок на указанную величину (отрицательную или положительную).
-    /// </summary>
-    public void ModifySanity(float delta)
+    /// РР·РјРµРЅРёС‚СЊ СЂР°СЃСЃСѓРґРѕРє РЅР° delta (РѕС‚СЂРёС†Р°С‚РµР»СЊРЅРѕРµ вЂ” РїРѕС‚РµСЂСЏ, РїРѕР»РѕР¶РёС‚РµР»СЊРЅРѕРµ вЂ” РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ).
+    public void ModifySanity(float delta) => SetSanity(currentSanity + delta);
+
+    /// РЎР±СЂРѕСЃ Рє СЃС‚Р°СЂС‚РѕРІРѕРјСѓ Р·РЅР°С‡РµРЅРёСЋ (РЅРѕРІР°СЏ РёРіСЂР°).
+    public void ResetSanity() => SetSanity(startSanity);
+
+    private SanityState Evaluate(float v)
     {
-        SetSanity(currentSanity + delta);
+        if (v <= minSanity) return SanityState.Depleted;
+        if (v <= criticalThreshold) return SanityState.Critical;
+        if (v <= warningThreshold) return SanityState.Warning;
+        return SanityState.Normal;
     }
 
-    private void UpdateSanityState(bool silent)
+    private void UpdateState()
     {
-        SanityState newState;
-        if (currentSanity <= minSanity)
-            newState = SanityState.Depleted;
-        else if (currentSanity <= criticalThreshold)
-            newState = SanityState.Critical;
-        else if (currentSanity <= warningThreshold)
-            newState = SanityState.Warning;
-        else
-            newState = SanityState.Normal;
+        var old = currentState;
+        var now = Evaluate(currentSanity);
+        if (now == old) return;
 
-        if (newState == currentState) return;
+        currentState = now;
+        Debug.Log($"[PlayerStats] РЎРѕСЃС‚РѕСЏРЅРёРµ РїСЃРёС…РёРєРё: {old} в†’ {now}");
+        OnSanityStateChanged?.Invoke(now);
 
-        currentState = newState;
-
-        if (silent) return;
-
-        Debug.Log($"[PlayerStats] Состояние психики: {currentState}");
-        OnSanityStateChanged?.Invoke(currentState);
-
-        if (currentState == SanityState.Critical)
-            OnCriticalSanityReached?.Invoke();
-        else if (currentState == SanityState.Depleted)
-            OnSanityDepleted?.Invoke();
+        if (now > old)
+        {
+            if (old < SanityState.Warning && now >= SanityState.Warning) onWarningReached.Invoke();
+            if (old < SanityState.Critical && now >= SanityState.Critical)
+            {
+                OnCriticalSanityReached?.Invoke();
+                onCriticalReached.Invoke();
+            }
+            if (now == SanityState.Depleted)
+            {
+                OnSanityDepleted?.Invoke();
+                onDepleted.Invoke();
+            }
+        }
+        else if (now == SanityState.Normal)
+        {
+            onRecovered.Invoke();
+        }
     }
 }

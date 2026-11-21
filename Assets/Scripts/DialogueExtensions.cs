@@ -70,10 +70,6 @@ public class DialogueExtensions : MonoBehaviour
 
     #region Input System Callbacks (Send Messages)
 
-    // ВАЖНО: в режиме Send Messages PlayerInput НЕ присылает отпускание
-    // Button-действий. Поэтому "зажатие" через value.isPressed отследить нельзя —
-    // старый isSkipHeld навсегда оставался true, и диалог сам проматывался до развилки.
-    // Теперь Skip — одиночное нажатие: мгновенно допечатать текущую строку, и всё.
     public void OnSkip(InputValue value)
     {
         if (!value.isPressed || IsBacklogOpen) return;
@@ -86,7 +82,7 @@ public class DialogueExtensions : MonoBehaviour
     {
         float y = value.Get<Vector2>().y;
 
-        // PassThrough присылает и нулевые значения — игнорируем
+      
         if (Mathf.Abs(y) < 0.05f || backlogPanel == null) return;
         if (Time.unscaledTime - lastToggleTime < toggleCooldown) return;
 
@@ -96,7 +92,7 @@ public class DialogueExtensions : MonoBehaviour
         }
         else if (y < 0f && IsBacklogOpen && IsScrolledToBottom())
         {
-            // Колесо вниз закрывает окно, когда история долистана до конца
+         
             CloseBacklog();
         }
     }
@@ -142,13 +138,13 @@ public class DialogueExtensions : MonoBehaviour
 
         UpdateBacklogUI();
         backlogPanel.SetActive(true);
-        SetYarnKeysEnabled(false); // Space/Esc не должны листать диалог под окном
+        SetYarnKeysEnabled(false); 
         lastToggleTime = Time.unscaledTime;
 
         StartCoroutine(ScrollToBottomRoutine());
     }
 
-    // Можно повесить на кнопку "Закрыть" в BacklogPanel
+   
     public void CloseBacklog()
     {
         if (backlogPanel == null) return;
@@ -166,7 +162,7 @@ public class DialogueExtensions : MonoBehaviour
             ? backlogScrollRect.viewport
             : (RectTransform)backlogScrollRect.transform;
 
-        // Весь текст помещается — листать нечего
+    
         if (backlogScrollRect.content.rect.height <= viewport.rect.height + 1f) return true;
 
         return backlogScrollRect.verticalNormalizedPosition <= 0.01f;

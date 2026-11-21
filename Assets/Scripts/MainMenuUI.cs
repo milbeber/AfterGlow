@@ -1,4 +1,4 @@
-using TMPro;
+п»їusing TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -7,10 +7,10 @@ using Application = UnityEngine.Application;
 
 public class MainMenuUI : MonoBehaviour
 {
-    [Header("Профиль игрока")]
+    [Header("РџСЂРѕС„РёР»СЊ РёРіСЂРѕРєР°")]
     public TMP_Text welcomeText;
 
-    [Header("Кнопки для блокировки")]
+    [Header("РљРЅРѕРїРєРё РґР»СЏ Р±Р»РѕРєРёСЂРѕРІРєРё")]
     public Button newGameButton;
     public Button loadGameButton;
 
@@ -20,7 +20,7 @@ public class MainMenuUI : MonoBehaviour
         {
             string username = AuthManager.Instance.CurrentUser.username;
             welcomeText.color = Color.white;
-            welcomeText.text = $"Вы вошли как: {username}";
+            welcomeText.text = $"Р’С‹ РІРѕС€Р»Рё РєР°Рє: {username}";
 
             if (newGameButton != null) newGameButton.interactable = true;
             if (loadGameButton != null) loadGameButton.interactable = true;
@@ -28,7 +28,7 @@ public class MainMenuUI : MonoBehaviour
         else
         {
             welcomeText.color = Color.red;
-            welcomeText.text = "ДОСТУП ЗАБЛОКИРОВАН: Авторизуйтесь!";
+            welcomeText.text = "Р”РћРЎРўРЈРџ Р—РђР‘Р›РћРљРР РћР’РђРќ: РђРІС‚РѕСЂРёР·СѓР№С‚РµСЃСЊ!";
 
             if (newGameButton != null) newGameButton.interactable = false;
             if (loadGameButton != null) loadGameButton.interactable = false;
@@ -37,24 +37,25 @@ public class MainMenuUI : MonoBehaviour
 
     public void OnNewGamePressed()
     {
-        Debug.Log("[Главное меню] Запуск новой игры...");
+        Debug.Log("[Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ] Р—Р°РїСѓСЃРє РЅРѕРІРѕР№ РёРіСЂС‹...");
+        if (PlayerStats.Instance != null) PlayerStats.Instance.ResetSanity(); // РЅРѕРІР°СЏ РёРіСЂР° вЂ” СЂР°СЃСЃСѓРґРѕРє СЃРЅРѕРІР° 100
         GameManager.Instance.SetState(GameState.DIALOGUE);
         SceneManager.LoadScene("GameplayScene");
     }
 
     public void OnLoadGamePressed()
     {
-        Debug.Log("[Главное меню] Загрузка последнего сохранения...");
+        Debug.Log("[Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ] Р—Р°РіСЂСѓР·РєР° РїРѕСЃР»РµРґРЅРµРіРѕ СЃРѕС…СЂР°РЅРµРЅРёСЏ...");
     }
 
     public void OnSettingsPressed()
     {
-        Debug.Log("[Главное меню] Открытие панели настроек...");
+        Debug.Log("[Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ] РћС‚РєСЂС‹С‚РёРµ РїР°РЅРµР»Рё РЅР°СЃС‚СЂРѕРµРє...");
     }
 
     public void OnExitPressed()
     {
-        Debug.Log("[Главное меню] Закрытие приложения...");
+        Debug.Log("[Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ] Р—Р°РєСЂС‹С‚РёРµ РїСЂРёР»РѕР¶РµРЅРёСЏ...");
         Application.Quit();
     }
 }

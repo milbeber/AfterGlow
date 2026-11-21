@@ -1,4 +1,4 @@
-using System;
+п»їusing System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -34,21 +34,21 @@ public class AuthManager : MonoBehaviour
         
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            Debug.LogError("[Регистрация] Ошибка: Все поля (Логин, Email, Пароль) обязательны для заполнения!");
+            Debug.LogError("[Р РµРіРёСЃС‚СЂР°С†РёСЏ] РћС€РёР±РєР°: Р’СЃРµ РїРѕР»СЏ (Р›РѕРіРёРЅ, Email, РџР°СЂРѕР»СЊ) РѕР±СЏР·Р°С‚РµР»СЊРЅС‹ РґР»СЏ Р·Р°РїРѕР»РЅРµРЅРёСЏ!");
             return false;
         }
 
     
         if (password.Length < 6)
         {
-            Debug.LogError("[Регистрация] Ошибка: Пароль должен быть не менее 6 символов!");
+            Debug.LogError("[Р РµРіРёСЃС‚СЂР°С†РёСЏ] РћС€РёР±РєР°: РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РЅРµ РјРµРЅРµРµ 6 СЃРёРјРІРѕР»РѕРІ!");
             return false;
         }
 
        
         if (!email.Contains("@"))
         {
-            Debug.LogError("[Регистрация] Ошибка: Некорректный формат адреса электронной почты!");
+            Debug.LogError("[Р РµРіРёСЃС‚СЂР°С†РёСЏ] РћС€РёР±РєР°: РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С„РѕСЂРјР°С‚ Р°РґСЂРµСЃР° СЌР»РµРєС‚СЂРѕРЅРЅРѕР№ РїРѕС‡С‚С‹!");
             return false;
         }
 
@@ -59,7 +59,7 @@ public class AuthManager : MonoBehaviour
        
         if (File.Exists(filePath))
         {
-            Debug.LogError("[Регистрация] Ошибка: Пользователь с таким логином уже зарегистрирован!");
+            Debug.LogError("[Р РµРіРёСЃС‚СЂР°С†РёСЏ] РћС€РёР±РєР°: РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ С‚Р°РєРёРј Р»РѕРіРёРЅРѕРј СѓР¶Рµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅ!");
             return false;
         }
 
@@ -82,12 +82,12 @@ public class AuthManager : MonoBehaviour
             string jsonText = JsonUtility.ToJson(newPlayer, true); 
             File.WriteAllText(filePath, jsonText); 
 
-            Debug.Log($"[Регистрация] Успех! Создан профиль для пользователя {username}. Путь: {filePath}");
+            Debug.Log($"[Р РµРіРёСЃС‚СЂР°С†РёСЏ] РЈСЃРїРµС…! РЎРѕР·РґР°РЅ РїСЂРѕС„РёР»СЊ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ {username}. РџСѓС‚СЊ: {filePath}");
             return true;
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[Регистрация] Критическая ошибка при записи файла профиля: {ex.Message}");
+            Debug.LogError($"[Р РµРіРёСЃС‚СЂР°С†РёСЏ] РљСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР° РїСЂРё Р·Р°РїРёСЃРё С„Р°Р№Р»Р° РїСЂРѕС„РёР»СЏ: {ex.Message}");
             return false;
         }
     }
@@ -98,7 +98,7 @@ public class AuthManager : MonoBehaviour
         
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            Debug.LogError("[Вход] Ошибка: Поля логина и пароля не могут быть пустыми!");
+            Debug.LogError("[Р’С…РѕРґ] РћС€РёР±РєР°: РџРѕР»СЏ Р»РѕРіРёРЅР° Рё РїР°СЂРѕР»СЏ РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё!");
             return false;
         }
 
@@ -107,7 +107,7 @@ public class AuthManager : MonoBehaviour
 
         if (!File.Exists(filePath))
         {
-            Debug.LogError("[Вход] Ошибка: Пользователь с таким логином не найден!");
+            Debug.LogError("[Р’С…РѕРґ] РћС€РёР±РєР°: РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ С‚Р°РєРёРј Р»РѕРіРёРЅРѕРј РЅРµ РЅР°Р№РґРµРЅ!");
             return false;
         }
 
@@ -129,18 +129,18 @@ public class AuthManager : MonoBehaviour
              
                 File.WriteAllText(filePath, JsonUtility.ToJson(CurrentUser, true));
 
-                Debug.Log($"[Вход] Авторизация успешна! Добро пожаловать в игру, {CurrentUser.username}!");
+                Debug.Log($"[Р’С…РѕРґ] РђРІС‚РѕСЂРёР·Р°С†РёСЏ СѓСЃРїРµС€РЅР°! Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ РёРіСЂСѓ, {CurrentUser.username}!");
                 return true;
             }
             else
             {
-                Debug.LogError("[Вход] Ошибка: Введен неверный пароль!");
+                Debug.LogError("[Р’С…РѕРґ] РћС€РёР±РєР°: Р’РІРµРґРµРЅ РЅРµРІРµСЂРЅС‹Р№ РїР°СЂРѕР»СЊ!");
                 return false;
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[Вход] Критическая ошибка при чтении файла профиля: {ex.Message}");
+            Debug.LogError($"[Р’С…РѕРґ] РљСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР° РїСЂРё С‡С‚РµРЅРёРё С„Р°Р№Р»Р° РїСЂРѕС„РёР»СЏ: {ex.Message}");
             return false;
         }
     }

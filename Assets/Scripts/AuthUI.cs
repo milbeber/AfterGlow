@@ -1,4 +1,4 @@
-using TMPro;
+п»їusing TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -6,16 +6,16 @@ using Debug = UnityEngine.Debug;
 
 public class AuthUI : MonoBehaviour
 {
-    [Header("Окна интерфейса")]
+    [Header("РћРєРЅР° РёРЅС‚РµСЂС„РµР№СЃР°")]
     public GameObject loginWindow;
     public GameObject registerWindow;
 
-    [Header("Поля ввода окна Входа")]
+    [Header("РџРѕР»СЏ РІРІРѕРґР° РѕРєРЅР° Р’С…РѕРґР°")]
     public TMP_InputField loginUsernameInput;
     public TMP_InputField loginPasswordInput;
     public TMP_Text loginErrorText;
 
-    [Header("Поля ввода окна Регистрации")]
+    [Header("РџРѕР»СЏ РІРІРѕРґР° РѕРєРЅР° Р РµРіРёСЃС‚СЂР°С†РёРё")]
     public TMP_InputField regUsernameInput;
     public TMP_InputField regEmailInput;
     public TMP_InputField regPasswordInput;
@@ -59,7 +59,7 @@ public class AuthUI : MonoBehaviour
         if (string.IsNullOrEmpty(loginUsernameInput.text) || string.IsNullOrEmpty(loginPasswordInput.text))
         {
             loginErrorText.color = Color.red;
-            loginErrorText.text = "Ошибка: Заполните все поля!";
+            loginErrorText.text = "РћС€РёР±РєР°: Р—Р°РїРѕР»РЅРёС‚Рµ РІСЃРµ РїРѕР»СЏ!";
             return;
         }
 
@@ -68,14 +68,14 @@ public class AuthUI : MonoBehaviour
         if (success)
         {
             loginErrorText.color = Color.green;
-            loginErrorText.text = "Успешный вход! Переход в игру...";
+            loginErrorText.text = "РЈСЃРїРµС€РЅС‹Р№ РІС…РѕРґ! РџРµСЂРµС…РѕРґ РІ РёРіСЂСѓ...";
             GameManager.Instance.SetState(GameState.MAIN_MENU);
             UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
         }
         else
         {
             loginErrorText.color = Color.red;
-            loginErrorText.text = "Ошибка: Неверный логин или пароль!";
+            loginErrorText.text = "РћС€РёР±РєР°: РќРµРІРµСЂРЅС‹Р№ Р»РѕРіРёРЅ РёР»Рё РїР°СЂРѕР»СЊ!";
         }
     }
 
@@ -86,7 +86,7 @@ public class AuthUI : MonoBehaviour
         if (string.IsNullOrEmpty(regUsernameInput.text) || string.IsNullOrEmpty(regEmailInput.text) || string.IsNullOrEmpty(regPasswordInput.text))
         {
             regErrorText.color = Color.red;
-            regErrorText.text = "Ошибка: Все поля обязательны!";
+            regErrorText.text = "РћС€РёР±РєР°: Р’СЃРµ РїРѕР»СЏ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹!";
             return;
         }
 
@@ -94,7 +94,7 @@ public class AuthUI : MonoBehaviour
         if (!regEmailInput.text.Contains("@"))
         {
             regErrorText.color = Color.red;
-            regErrorText.text = "Ошибка: Некорректный формат почты (отсутствует '@')!";
+            regErrorText.text = "РћС€РёР±РєР°: РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С„РѕСЂРјР°С‚ РїРѕС‡С‚С‹ (РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ '@')!";
             return;
         }
 
@@ -103,7 +103,7 @@ public class AuthUI : MonoBehaviour
         if (success)
         {
             regErrorText.color = Color.green;
-            regErrorText.text = "Регистрация успешна! Перейдите к входу.";
+            regErrorText.text = "Р РµРіРёСЃС‚СЂР°С†РёСЏ СѓСЃРїРµС€РЅР°! РџРµСЂРµР№РґРёС‚Рµ Рє РІС…РѕРґСѓ.";
 
             regUsernameInput.text = "";
             regEmailInput.text = "";
@@ -112,7 +112,7 @@ public class AuthUI : MonoBehaviour
         else
         {
             regErrorText.color = Color.red;
-            regErrorText.text = "Ошибка регистрации! Проверьте данные.";
+            regErrorText.text = "РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё! РџСЂРѕРІРµСЂСЊС‚Рµ РґР°РЅРЅС‹Рµ.";
         }
     }
 }

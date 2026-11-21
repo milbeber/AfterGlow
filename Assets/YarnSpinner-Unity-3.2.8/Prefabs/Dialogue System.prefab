@@ -881,7 +881,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7985477256237130417}
   - component: {fileID: 8309902628685535410}
-  - component: {fileID: 8635081094713202853}
   m_Layer: 0
   m_Name: Dialogue System
   m_TagString: Untagged
@@ -921,7 +920,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   yarnProject: {fileID: 0}
-  variableStorage: {fileID: 8635081094713202853}
+  variableStorage: {fileID: 0}
   lineProvider: {fileID: 0}
   saliencyStrategy: 0
   dialoguePresenters:
@@ -948,20 +947,6 @@ MonoBehaviour:
   onUnhandledCommand:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &8635081094713202853
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7262066351540048079}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 610c541718d694070a21327d1ae62e75, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  showDebug: 0
-  debugTextView: {fileID: 0}
 --- !u!1 &8020628925107869965
 GameObject:
   m_ObjectHideFlags: 0
