@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -38,8 +38,21 @@ public class DialogueStyler : MonoBehaviour
     [SerializeField] private float artBottomMargin = 6f;
 
     [Header("Варианты ответа")]
+    [Tooltip("Рисованная панель выбора: рамка с розами и неоновые плашки. Выключите — вернётся процедурное кружево")]
+    [SerializeField] private bool useArtOptions = true;
     [SerializeField] private float optionsWidth = 1100f;
     [SerializeField] private float optionsY = 70f;
+    [SerializeField] private float artOptionsWidth = 1360f;
+    [Tooltip("Желаемый центр панели выбора по высоте (от центра экрана). Если панель высокая, она сама опустится ниже индикатора рассудка")]
+    [SerializeField] private float artOptionsY = 0f;
+    [Tooltip("Сколько места сверху оставить под индикатор рассудка, если его не удалось измерить")]
+    [SerializeField] private float hudReserve = 235f;
+    [Tooltip("Минимальный отступ панели от краёв экрана")]
+    [SerializeField] private float screenMargin = 16f;
+    [Tooltip("Непрозрачность фона внутри рамки выбора: 1 — сплошной, 0 — сцену видно насквозь")]
+    [Range(0f, 1f)] [SerializeField] private float optionsFillOpacity = 0.72f;
+    [Tooltip("Показывать последнюю реплику над вариантами")]
+    [SerializeField] private bool showLastLine = true;
 
     private RectTransform box, nameTag, heart;
     private CanvasGroup boxGroup;
@@ -57,7 +70,19 @@ public class DialogueStyler : MonoBehaviour
         public Image fill;
         public TextMeshProUGUI label;
         public LayoutElement layout;
+        public Image plateOn;
+        public RectTransform sparkle, visual;
+        public float padLeft, padRight, padY, minHeight, phase, glow;
     }
+
+    private bool artOptions;
+    private float artMinHeight;
+    private Image optionsFill;
+    private RectTransform sanityHud;
+    private VerticalLayoutGroup optionsLayout;
+    private RectTransform timerRoot, timerFill;
+    private Image timerFillImg, timerGlowImg;
+    private Sprite plateSprite, plateOnSprite, sparkleSprite, heartSprite;
 
     // =====================================================================
 
@@ -95,6 +120,10 @@ public class DialogueStyler : MonoBehaviour
         }
 
         options = FindFirstObjectByType<OptionsPresenter>(FindObjectsInactive.Include);
+
+        // день 15: при низком рассудке буквы дрожат и «соскальзывают», но текст остаётся читаемым
+        if (dialogueText != null) UIStyleKit.GetOrAdd<SanityTextDistortion>(dialogueText.gameObject);
+        if (nameText != null) UIStyleKit.GetOrAdd<SanityTextDistortion>(nameText.gameObject).multiplier = 0.5f;
 
         // имена в истории — светло-розовые, под тёмное окно
         var ext = FindFirstObjectByType<DialogueExtensions>(FindObjectsInactive.Include);
@@ -393,16 +422,56 @@ public class DialogueStyler : MonoBehaviour
             if (!o.item.gameObject.activeInHierarchy) continue;
 
             bool on = o.item.gameObject == selected && o.item.interactable;
-            o.fill.color = Color.Lerp(o.fill.color, on ? UIStyleKit.GloomTag : UIStyleKit.GloomPlate, Time.unscaledDeltaTime * 14f);
+            if (o.plateOn != null) AnimateArtOption(o, on);
+            else o.fill.color = Color.Lerp(o.fill.color, on ? UIStyleKit.GloomTag : UIStyleKit.GloomPlate, Time.unscaledDeltaTime * 14f);
 
             // высота плашки — по тексту, чтобы длинные варианты помещались целиком
-            float w = ((RectTransform)o.item.transform).rect.width - 2f * OptionPadX;
+            float w = ((RectTransform)o.item.transform).rect.width - o.padLeft - o.padRight;
             if (w > 10f && o.label != null)
             {
-                float h = o.label.GetPreferredValues(o.label.text, w, float.PositiveInfinity).y + 2f * OptionPadY;
-                o.layout.preferredHeight = Mathf.Max(84f, h);
+                float h = o.label.GetPreferredValues(o.label.text, w, float.PositiveInfinity).y + 2f * o.padY;
+                o.layout.preferredHeight = Mathf.Max(o.minHeight, h);
             }
         }
+
+        if (artOptions)
+        {
+            if (optionsFill != null) optionsFill.color = Color.white.WithAlpha(optionsFillOpacity);
+            UpdateTimer(optionsVisible);
+            PlaceArtOptions();
+        }
+    }
+
+    /// Панель выбора не заезжает на индикатор рассудка в левом верхнем углу и не уходит за экран
+    private void PlaceArtOptions()
+    {
+        var rt = (RectTransform)options.transform;
+        var parent = rt.parent as RectTransform;
+        if (parent == null) return;
+
+        float halfScreen = parent.rect.height * 0.5f;
+        float half = rt.rect.height * 0.5f;
+        float top = halfScreen - hudReserve;
+
+        if (sanityHud == null)
+        {
+            var hud = UIStyleKit.FindDeep(parent.root, "SanityHUD");
+            if (hud != null) sanityHud = hud as RectTransform;
+        }
+        if (sanityHud != null && sanityHud.gameObject.activeInHierarchy)
+        {
+            var corners = new Vector3[4];
+            sanityHud.GetWorldCorners(corners);
+            float hudBottom = parent.InverseTransformPoint(corners[0]).y;
+            float hudRight = parent.InverseTransformPoint(corners[2]).x;
+            float panelLeft = rt.anchoredPosition.x - rt.rect.width * 0.5f;
+            if (hudRight > panelLeft) top = hudBottom - 10f;   // по горизонтали пересекаются — уходим ниже
+        }
+
+        float y = Mathf.Min(artOptionsY, top - half);
+        y = Mathf.Max(y, -halfScreen + screenMargin + half);
+        if (!Mathf.Approximately(rt.anchoredPosition.y, y))
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
     }
 
     private const float OptionLace = 2.4f;
@@ -415,6 +484,23 @@ public class DialogueStyler : MonoBehaviour
         optionsStyled = true;
         var rt = (RectTransform)options.transform;
         optionsGroup = options.GetComponent<CanvasGroup>();
+        if (optionsGroup == null) optionsGroup = options.GetComponentInChildren<CanvasGroup>(true);
+
+        if (useArtOptions)
+        {
+            var frame = LoadSliced(ArtOptionsFramePath, new Vector4(460f, 285f, 390f, 440f));
+            plateSprite = LoadSliced(ArtPlatePath, new Vector4(40f, 26f, 40f, 26f));
+            plateOnSprite = LoadSliced(ArtPlateOnPath, new Vector4(40f, 26f, 40f, 26f));
+            sparkleSprite = Resources.Load<Sprite>(ArtSparklePath);
+            heartSprite = Resources.Load<Sprite>(ArtOptionHeartPath);
+            if (frame != null && plateSprite != null && plateOnSprite != null)
+            {
+                artOptions = true;
+                StyleArtOptionsPanel(rt, frame);
+                return;
+            }
+            Debug.LogWarning("[DialogueStyler] Нет картинок AfterGlowUI/Options*, панель выбора в процедурном стиле");
+        }
 
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0.5f, 0.5f);
@@ -467,8 +553,10 @@ public class DialogueStyler : MonoBehaviour
     /// Плашка варианта. Текст переносится в свой дочерний объект, иначе фон ложится поверх текста.
     private Option StyleOption(OptionItem item)
     {
+        if (artOptions) return StyleArtOption(item);
+
         var rt = (RectTransform)item.transform;
-        var o = new Option { item = item };
+        var o = new Option { item = item, padLeft = OptionPadX, padRight = OptionPadX, padY = OptionPadY, minHeight = 84f };
 
         // исходный текст (в префабе Yarn он на самом корне) и старые украшения
         var oldText = GetField<TextMeshProUGUI>(item, "text") ?? item.GetComponentInChildren<TextMeshProUGUI>(true);
@@ -536,6 +624,287 @@ public class DialogueStyler : MonoBehaviour
         o.layout.preferredHeight = 84f;
         o.layout.flexibleHeight = 0f;
         return o;
+    }
+
+    // =====================================================================
+    // Рисованная панель выбора (рамка с розами, неоновые плашки)
+    // =====================================================================
+
+    public const string ArtOptionsFramePath = "AfterGlowUI/OptionsFrame";
+    public const string ArtPlatePath = "AfterGlowUI/OptionPlate";
+    public const string ArtPlateOnPath = "AfterGlowUI/OptionPlateSelected";
+    public const string ArtSparklePath = "AfterGlowUI/OptionSparkle";
+    public const string ArtOptionHeartPath = "AfterGlowUI/OptionHeart";
+
+    // OptionsFrame.png рисуется уменьшенной в ArtFrameScale раз (картинка 2170×749).
+    // Поля внутри неё (уже в единицах экрана): слева бант и чётки, справа крест, снизу кружево
+    private const float ArtFrameScale = 1.6f;
+    private const float ArtPanelLeft = 188f, ArtPanelRight = 141f, ArtPanelTop = 134f, ArtPanelBottom = 138f;
+    // Прозрачная середина рамки, под ней лежит полупрозрачная заливка
+    private const float ArtFillLeft = 111f, ArtFillRight = 86f, ArtFillTop = 100f, ArtFillBottom = 112f;
+    private const float ArtTimerSpace = 30f;      // место под полоску таймера
+    private const float ArtPlateGlow = 14f;        // ореол вокруг плашки в OptionPlate.png
+    private const float ArtOptionHeight = 78f;
+    private const float ArtLabelLeft = 104f, ArtLabelRight = 86f, ArtLabelY = 12f;
+
+    private void StyleArtOptionsPanel(RectTransform rt, Sprite frame)
+    {
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = new Vector2(0f, artOptionsY);
+        rt.sizeDelta = new Vector2(artOptionsWidth, rt.sizeDelta.y);
+
+        optionsLayout = options.GetComponent<VerticalLayoutGroup>();
+        if (optionsLayout != null)
+        {
+            optionsLayout.padding = new RectOffset((int)ArtPanelLeft, (int)ArtPanelRight, (int)ArtPanelTop, (int)ArtPanelBottom);
+            optionsLayout.spacing = 18f;
+            optionsLayout.childAlignment = TextAnchor.MiddleCenter;
+            optionsLayout.childControlWidth = true;
+            optionsLayout.childControlHeight = true;
+            optionsLayout.childForceExpandWidth = true;
+            optionsLayout.childForceExpandHeight = false;
+        }
+        var fitter = UIStyleKit.GetOrAdd<ContentSizeFitter>(options.gameObject);
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // фон панели: рисованная рамка вместо чёрного прямоугольника
+        var bg = UIStyleKit.FindDeep(rt, "Background");
+        RectTransform frameRt;
+        if (bg != null)
+        {
+            var bgImg = bg.GetComponent<Image>();
+            if (bgImg != null) bgImg.enabled = false;
+            frameRt = UIStyleKit.Child(bg, "ArtFrame");
+        }
+        else
+        {
+            frameRt = UIStyleKit.Child(rt, "ArtFrame", 0);
+            UIStyleKit.GetOrAdd<LayoutElement>(frameRt.gameObject).ignoreLayout = true;
+        }
+        UIStyleKit.Stretch(frameRt);
+
+        var shadow = UIStyleKit.Child(frameRt, "Shadow");
+        UIStyleKit.Stretch(shadow, -40f);
+        UIStyleKit.AddImage(shadow, UIStyleKit.SoftCircle(), Color.black.WithAlpha(0.3f * optionsFillOpacity));
+
+        // полупрозрачный фон внутри рамки (в самой картинке середина прозрачная)
+        var fill = UIStyleKit.Child(frameRt, "Fill");
+        UIStyleKit.Stretch(fill);
+        fill.offsetMin = new Vector2(ArtFillLeft, ArtFillBottom);
+        fill.offsetMax = new Vector2(-ArtFillRight, -ArtFillTop);
+        optionsFill = UIStyleKit.AddImage(fill, UIStyleKit.VerticalGradient(UIStyleKit.Hex("16040D"), UIStyleKit.Hex("2E0B1F")),
+            Color.white.WithAlpha(optionsFillOpacity));
+
+        var art = UIStyleKit.Child(frameRt, "Frame");
+        UIStyleKit.Stretch(art);
+        var artImg = UIStyleKit.AddImage(art, frame, Color.white, Image.Type.Sliced);
+        artImg.fillCenter = true;
+        artImg.pixelsPerUnitMultiplier = ArtFrameScale;
+        artMinHeight = (frame.border.y + frame.border.w) / ArtFrameScale;
+        UIStyleKit.GetOrAdd<LayoutElement>(options.gameObject).minHeight = artMinHeight;
+
+        BuildTimer(frameRt);
+
+        // последняя реплика — курсивом над вариантами
+        var last = FindText(rt, "Last Line");
+        if (last != null)
+        {
+            var container = last.transform.parent != null && last.transform.parent != rt ? last.transform.parent.gameObject : last.gameObject;
+            if (!showLastLine) { container.SetActive(false); SetPresenterLastLine(false); return; }
+            if (bodyFont != null) last.font = bodyFont;
+            last.enableAutoSizing = false;
+            last.fontSize = 25;
+            last.fontStyle = FontStyles.Italic;
+            last.color = UIStyleKit.Hex("E7B7C9");
+            last.alignment = TextAlignmentOptions.Center;
+            last.textWrappingMode = TextWrappingModes.Normal;
+            last.margin = new Vector4(30f, -6f, 30f, 8f);
+            last.raycastTarget = false;
+            Glow(last, Color.black.WithAlpha(0.85f), 0.4f, -0.5f);
+            UIStyleKit.GetOrAdd<SanityTextDistortion>(last.gameObject).multiplier = 0.6f;
+        }
+    }
+
+    private void SetPresenterLastLine(bool on)
+    {
+        var f = typeof(OptionsPresenter).GetField("showsLastLine", Any);
+        f?.SetValue(options, on);
+    }
+
+    /// Неоновая полоска под вариантами: тает к центру, пока идёт время на выбор
+    private void BuildTimer(RectTransform frameRt)
+    {
+        timerRoot = UIStyleKit.Child(frameRt, "Timer");
+        timerRoot.anchorMin = new Vector2(0f, 0f);
+        timerRoot.anchorMax = new Vector2(1f, 0f);
+        timerRoot.pivot = new Vector2(0.5f, 0.5f);
+        timerRoot.offsetMin = new Vector2(ArtPanelLeft + 60f, 0f);
+        timerRoot.offsetMax = new Vector2(-(ArtPanelRight + 60f), 0f);
+        timerRoot.anchoredPosition = new Vector2(0f, ArtPanelBottom + 4f);
+        timerRoot.sizeDelta = new Vector2(timerRoot.sizeDelta.x, 8f);
+
+        var track = UIStyleKit.Child(timerRoot, "Track");
+        UIStyleKit.Stretch(track);
+        UIStyleKit.AddImage(track, UIStyleKit.Rounded(4), UIStyleKit.Hex("2A0A18").WithAlpha(0.9f), Image.Type.Sliced);
+
+        timerFill = UIStyleKit.Child(timerRoot, "Fill");
+        UIStyleKit.Stretch(timerFill);
+        var glow = UIStyleKit.Child(timerFill, "Glow");
+        UIStyleKit.Stretch(glow, -16f);
+        timerGlowImg = UIStyleKit.AddImage(glow, UIStyleKit.SoftCircle(), UIStyleKit.Hex("FF3FA0").WithAlpha(0.5f), Image.Type.Simple);
+        var line = UIStyleKit.Child(timerFill, "Line");
+        UIStyleKit.Stretch(line);
+        timerFillImg = UIStyleKit.AddImage(line, UIStyleKit.Rounded(4), UIStyleKit.Hex("FF8CC8"), Image.Type.Sliced);
+        timerRoot.gameObject.SetActive(false);
+    }
+
+    private void UpdateTimer(bool optionsVisible)
+    {
+        var timer = TimedChoice.Instance;
+        bool running = optionsVisible && timer != null && timer.IsRunning;
+        if (timerRoot != null && timerRoot.gameObject.activeSelf != running) timerRoot.gameObject.SetActive(running);
+
+        // под полоску нужно место: нижний отступ панели растёт, пока идёт таймер
+        if (optionsLayout != null)
+        {
+            int bottom = (int)(ArtPanelBottom + (running ? ArtTimerSpace : 0f));
+            if (optionsLayout.padding.bottom != bottom)
+            {
+                optionsLayout.padding.bottom = bottom;
+                LayoutRebuilder.MarkLayoutForRebuild((RectTransform)options.transform);
+            }
+        }
+        if (!running || timerFill == null) return;
+
+        float left = timer.Remaining01;
+        timerFill.anchorMin = new Vector2(0.5f - left * 0.5f, 0f);
+        timerFill.anchorMax = new Vector2(0.5f + left * 0.5f, 1f);
+        timerFill.offsetMin = timerFill.offsetMax = Vector2.zero;
+
+        // к концу полоска наливается кровью и мигает в такт сердцу
+        float danger = Mathf.InverseLerp(0.45f, 0.05f, left);
+        Color c = Color.Lerp(UIStyleKit.Hex("FF8CC8"), UIStyleKit.BloodBright, danger);
+        float beat = danger > 0f ? Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Time.unscaledTime * Mathf.Lerp(5f, 11f, danger))), 8f) : 0f;
+        timerFillImg.color = Color.Lerp(c, Color.white, beat * 0.35f);
+        timerGlowImg.color = c.WithAlpha(0.35f + 0.45f * beat);
+        timerRoot.anchoredPosition = new Vector2(danger > 0.6f ? Random.Range(-1.5f, 1.5f) * danger : 0f, ArtPanelBottom + 4f);
+    }
+
+    private Option StyleArtOption(OptionItem item)
+    {
+        var rt = (RectTransform)item.transform;
+        var o = new Option
+        {
+            item = item, padLeft = ArtLabelLeft, padRight = ArtLabelRight, padY = ArtLabelY,
+            minHeight = ArtOptionHeight, phase = Random.value * 10f
+        };
+
+        var oldText = GetField<TextMeshProUGUI>(item, "text") ?? item.GetComponentInChildren<TextMeshProUGUI>(true);
+        var oldSelection = GetField<Image>(item, "selectionImage");
+        if (oldSelection != null) oldSelection.gameObject.SetActive(false);
+        var oldBg = UIStyleKit.FindDeep(rt, "Option Background");
+        if (oldBg != null) oldBg.gameObject.SetActive(false);
+        var rootImg = item.GetComponent<Image>();
+        if (rootImg != null) rootImg.color = new Color(0, 0, 0, 0);
+        item.transition = Selectable.Transition.None;
+
+        // всё рисованное — в одном объекте, чтобы плашку можно было слегка «приподнять» при выборе
+        o.visual = UIStyleKit.Child(rt, "AstraPlate", 0);
+        UIStyleKit.Stretch(o.visual);
+
+        // плашка (она же ловит мышь) и её «горящая» версия поверх
+        var plate = UIStyleKit.Child(o.visual, "Plate");
+        UIStyleKit.Stretch(plate, -ArtPlateGlow);
+        o.fill = UIStyleKit.AddImage(plate, plateSprite, Color.white, Image.Type.Sliced);
+        o.fill.raycastTarget = true;
+        var on = UIStyleKit.Child(o.visual, "PlateSelected");
+        UIStyleKit.Stretch(on, -ArtPlateGlow);
+        o.plateOn = UIStyleKit.AddImage(on, plateOnSprite, Color.white.WithAlpha(0f), Image.Type.Sliced);
+
+        // сердечко выбранного варианта (им управляет сам OptionItem через selectionImage)
+        var mark = UIStyleKit.Child(o.visual, "Heart");
+        UIStyleKit.Place(mark, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(52f, 0f), new Vector2(38f, 38f));
+        var markImg = UIStyleKit.AddImage(mark, heartSprite != null ? heartSprite : UIStyleKit.Heart(), Color.white);
+        markImg.preserveAspect = true;
+
+        // звёздочка справа — есть всегда, у выбранного мерцает ярче
+        if (sparkleSprite != null)
+        {
+            o.sparkle = UIStyleKit.Child(o.visual, "Sparkle");
+            UIStyleKit.Place(o.sparkle, new Vector2(1f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-50f, 0f), new Vector2(34f, 34f));
+            UIStyleKit.AddImage(o.sparkle, sparkleSprite, Color.white.WithAlpha(0.85f));
+        }
+
+        var labelRt = UIStyleKit.Child(rt, "AstraLabel");
+        UIStyleKit.Stretch(labelRt);
+        labelRt.offsetMin = new Vector2(ArtLabelLeft, ArtLabelY);
+        labelRt.offsetMax = new Vector2(-ArtLabelRight, -ArtLabelY);
+        var label = labelRt.gameObject.AddComponent<TextMeshProUGUI>();
+        label.font = bodyFont != null ? bodyFont : (oldText != null ? oldText.font : TMP_Settings.defaultFontAsset);
+        label.text = oldText != null ? oldText.text : "";
+        label.fontSize = 28;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.textWrappingMode = TextWrappingModes.Normal;
+        label.overflowMode = TextOverflowModes.Overflow;
+        label.raycastTarget = false;
+        label.color = UIStyleKit.GloomText;
+        Glow(label, Color.black.WithAlpha(0.8f), 0.35f, -0.4f);
+        labelRt.gameObject.AddComponent<SanityTextDistortion>().multiplier = 0.7f;
+        o.label = label;
+
+        if (oldText != null)
+        {
+            if (oldText.gameObject == item.gameObject) oldText.enabled = false;
+            else oldText.gameObject.SetActive(false);
+        }
+        SetField(item, "text", label);
+        SetField(item, "selectionImage", markImg);
+
+        SetAppearance(item, "normal", UIStyleKit.Hex("F2D6DF"), null);
+        SetAppearance(item, "selected", Color.white, markImg.sprite);
+        SetAppearance(item, "disabled", UIStyleKit.GloomMuted.WithAlpha(0.6f), null);
+        markImg.gameObject.SetActive(false);
+
+        o.layout = UIStyleKit.GetOrAdd<LayoutElement>(item.gameObject);
+        o.layout.minHeight = ArtOptionHeight;
+        o.layout.preferredHeight = ArtOptionHeight;
+        o.layout.flexibleHeight = 0f;
+        return o;
+    }
+
+    private void AnimateArtOption(Option o, bool on)
+    {
+        float dt = Time.unscaledDeltaTime;
+        float t = Time.unscaledTime;
+        o.glow = Mathf.MoveTowards(o.glow, on ? 1f : 0f, dt * 7f);
+
+        float breath = 0.9f + 0.1f * Mathf.Sin(t * 2.4f + o.phase);
+        o.plateOn.color = Color.white.WithAlpha(o.glow * breath);
+        o.fill.color = Color.white.WithAlpha(o.item.interactable ? 1f : 0.55f);
+        if (o.visual != null) o.visual.localScale = Vector3.one * (1f + 0.012f * o.glow);
+
+        if (o.sparkle != null)
+        {
+            float tw = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(t * 1.7f + o.phase)), 6f);
+            float k = Mathf.Lerp(0.75f, 1f, o.glow) + 0.2f * tw;
+            o.sparkle.localScale = Vector3.one * k;
+            o.sparkle.localRotation = Quaternion.Euler(0f, 0f, 45f * tw * o.glow);
+        }
+    }
+
+    /// Спрайт с 9-slice. Если .meta потерялся и границ нет — делаем срез сами.
+    private static Sprite LoadSliced(string path, Vector4 border)
+    {
+        var s = Resources.Load<Sprite>(path);
+        if (s == null)
+        {
+            var tex = Resources.Load<Texture2D>(path);
+            if (tex == null) return null;
+            return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, border);
+        }
+        if (s.border != Vector4.zero) return s;
+        return Sprite.Create(s.texture, s.rect, new Vector2(0.5f, 0.5f), s.pixelsPerUnit, 0, SpriteMeshType.FullRect, border);
     }
 
     // ---------------- Рефлексия для приватных полей OptionItem ----------------

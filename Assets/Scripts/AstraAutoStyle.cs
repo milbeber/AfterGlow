@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Yarn.Unity;
@@ -43,6 +43,12 @@ public static class AstraAutoStyle
 
             foreach (var runner in runners)
                 UIStyleKit.GetOrAdd<SanityYarnBridge>(runner.gameObject);
+
+            // День 15: выборы с таймером и менеджер хоррор-эффектов
+            if (Object.FindFirstObjectByType<TimedChoice>(inc) == null)
+                runners[0].gameObject.AddComponent<TimedChoice>();
+            if (Object.FindFirstObjectByType<HorrorEffectsManager>(inc) == null)
+                runners[0].gameObject.AddComponent<HorrorEffectsManager>();
 
             foreach (var tw in Object.FindObjectsByType<CustomTypewriter>(inc, none))
             {
